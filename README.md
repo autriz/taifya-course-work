@@ -1,4 +1,4 @@
-# lang
+# Taifya-course-work
 
 This project was made as a course work for subject "Theory of automatas and formal languages".
 
