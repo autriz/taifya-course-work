@@ -203,7 +203,7 @@ end
         Token::Float(String::from("10.54")),
         Token::Semicolon,
 
-        Token::Comment(String::from("\n    multiline\n    comment\n")),
+        Token::Comment,
 
         Token::Ident(String::from("a")),
         Token::Plus,

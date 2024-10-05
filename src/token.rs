@@ -17,7 +17,7 @@ pub enum Token {
     // <строка>::= '"'{/ <буква> /}'"'
     String(String),
     // (* multiline comment *)
-    Comment(String),
+    Comment,
 
     // Операции группы отношения
     Equal, // ==

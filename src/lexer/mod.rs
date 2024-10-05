@@ -482,13 +482,13 @@ impl Lexer {
 		}
 
 		let end_pos = self.position;
-		let content = String::from_utf8_lossy(&self.input[start_pos..end_pos])
+		let _ = String::from_utf8_lossy(&self.input[start_pos..end_pos])
 			.to_string();
 
 		self.next_char(); // skip asterisk
 		self.next_char(); // skip rparen
 
-		(start_pos as u32, Token::Comment(content), end_pos as u32)
+		(start_pos as u32, Token::Comment, end_pos as u32)
 	}
 }
 
