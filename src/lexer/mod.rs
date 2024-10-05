@@ -2,7 +2,7 @@ mod error;
 pub use error::{LexicalError, LexicalErrorType};
 
 #[cfg(test)]
-mod test;
+mod tests;
 
 use std::fmt::Display;
 use crate::token::Token;
