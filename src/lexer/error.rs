@@ -1,6 +1,6 @@
 use super::SrcSpan;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LexicalErrorType {
     UnrecognizedToken { tok: u8 },
     MissingNumberBeforeExponent,
@@ -10,7 +10,7 @@ pub enum LexicalErrorType {
     UnsupportedFloatingPoint,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct LexicalError {
     pub error: LexicalErrorType,
     pub location: SrcSpan

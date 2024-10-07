@@ -90,6 +90,7 @@ impl Parse for Program {
     ) -> Result<Self, crate::parser::ParseError> {
         let (start, _, _) = parser.next_token().unwrap();
         let mut end = 0;
+
         parser.is_parsing_program = true;
 
         let mut statements = vec![];
@@ -99,7 +100,7 @@ impl Parse for Program {
         {
             statements.push(Statement::parse(parser, None)?);
 
-            println!("prog: {:?}, {:?}", parser.current_token, parser.next_token);
+            // println!("prog: {:?}, {:?}", parser.current_token, parser.next_token);
 
             match (&parser.current_token, &parser.next_token) {
                 (Some((start, Token::Semicolon, end)), Some((_, Token::End, _))) => {
@@ -112,7 +113,7 @@ impl Parse for Program {
                     );
                 },
                 (Some((_, Token::Semicolon, _)), Some(_)) => {
-                    println!("after semi");
+                    // println!("after semi");
                     parser.step();
                 }
                 (Some((_, Token::End, _)), None) => {
@@ -135,6 +136,11 @@ impl Parse for Program {
                 ),
                 _ => unreachable!("Program parser should not reach this place")
             }
+        }
+
+        if parser.is_parsing_program == true {
+            parser.is_parsing_program = false;
+            end = parser.expect_one(Token::End)?.1;
         }
 
         Ok(Self {
@@ -324,7 +330,7 @@ impl Parse for Expression {
         parser: &mut crate::parser::Parser, 
         precedence: Option<crate::parser::Precedence>
     ) -> Result<Self, crate::parser::ParseError> {
-        println!("{:?}", parser.current_token);
+        // println!("{:?}", parser.current_token);
         let mut expr = match parser.current_token.clone() {
             Some((start, token, end)) => match token {
                 Token::Ident(ident) => {
@@ -370,14 +376,14 @@ impl Parse for Expression {
             )
         };
 
-        println!("parse {expr:?}, cur: {:?}", parser.current_token);
-        println!("{:?}, {:?}", precedence, parser.current_precedence());
+        // println!("parse {expr:?}, cur: {:?}", parser.current_token);
+        // println!("{:?}, {:?}", precedence, parser.current_precedence());
 
         while parser.current_token.as_ref()
             .is_some_and(|token| token.1 != Token::Semicolon) && 
             precedence.unwrap_or(Precedence::Lowest) < parser.current_precedence() 
         {
-            println!("hey");
+            // println!("hey");
             expr = match &parser.current_token {
                 Some((_, next_token, _)) => match next_token {
                     Token::Plus | Token::Minus | Token::Slash | 

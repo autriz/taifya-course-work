@@ -102,28 +102,34 @@ impl Parser {
         }
     }
 
-    pub fn next_precedence(&self) -> Precedence {
-        match &self.next_token {
-            Some((_, token, _)) => Precedence::from(token),
-            None => Precedence::Lowest
-        }
-    }
-
     pub fn parse(&mut self) -> Result<Parsed, ParseError> {
-        // determine if program starts with 'begin' and ends with 'end'
-        // check if begin exists at the start of a file
         let mut statements = vec![];
 
         while self.current_token.as_ref()
             .is_some_and(|(_, token, _)| *token != Token::Eof) 
         {
-            statements.push(Statement::parse(self, None)?);
+            statements.push(Statement::parse(self, None));
 
             // println!("in parse {:?}, {:?}", self.current_token, self.next_token);
             // self.step();
         }
 
-        // check if end exists at the end of a file
+        if self.lex_errors.len() > 0 {
+            return parse_error(
+                ParseErrorType::LexError { 
+                    error: self.lex_errors[0].clone()
+                }, 
+                SrcSpan { start: 0, end: 0 }
+            );
+        }
+
+        let statements = statements.into_iter()
+            .map(|statement| {
+                statement.unwrap()
+            })
+            .collect::<Vec<Statement>>();
+
+
         let module = Module {
             name: "".into(),
             statements,
