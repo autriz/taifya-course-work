@@ -223,8 +223,8 @@ impl From<&Token> for Precedence {
             Token::Equal | Token::NotEqual => Self::Equals,
             Token::LessThan | Token::GreaterThan | 
             Token::LessThanOrEqual | Token::GreaterThanOrEqual => Self::LessGreater,
-            Token::Plus | Token::Minus => Self::Sum,
-            Token::Slash | Token::Asterisk => Self::Product,
+            Token::Plus | Token::Minus | Token::Or => Self::Sum,
+            Token::Slash | Token::Asterisk | Token::And => Self::Product,
             Token::Assign => Self::Assign,
             _ => Self::Lowest,
         }

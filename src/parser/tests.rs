@@ -1,10 +1,7 @@
 use crate::{
-    ast::Statement, 
     lexer::Lexer, 
     parser::{ParseError, Parser}
 };
-
-use super::Parse;
 
 #[test]
 fn test_declarations() -> Result<(), ParseError> {
@@ -26,6 +23,48 @@ fn test_declarations() -> Result<(), ParseError> {
 
     for err in parser.lex_errors.iter() {
         println!("{:?}", err);
+    }
+
+    Ok(())
+}
+
+#[test]
+fn test_infixes() -> Result<(), ParseError> {
+    let input = r#"
+        false && true
+        true || false
+        5 + 5
+        10 - 10
+        6 * 10
+        10 / 6
+    "#;
+
+    let lexer = Lexer::new(input.to_string());
+    let mut parser = Parser::new(lexer);
+
+    let parsed = parser.parse()?;
+
+    for stmt in parsed.module.statements {
+        println!("{}", stmt);
+    }
+
+    Ok(())
+}
+
+#[test]
+fn test_prefix() -> Result<(), ParseError> {
+    let input = r#"
+        !!!false == true
+        !true == !!false
+    "#;
+
+    let lexer = Lexer::new(input.to_string());
+    let mut parser = Parser::new(lexer);
+
+    let parsed = parser.parse()?;
+
+    for stmt in parsed.module.statements {
+        println!("{}", stmt);
     }
 
     Ok(())

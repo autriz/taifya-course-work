@@ -324,6 +324,7 @@ impl Parse for Expression {
         parser: &mut crate::parser::Parser, 
         precedence: Option<crate::parser::Precedence>
     ) -> Result<Self, crate::parser::ParseError> {
+        println!("{:?}", parser.current_token);
         let mut expr = match parser.current_token.clone() {
             Some((start, token, end)) => match token {
                 Token::Ident(ident) => {
@@ -340,7 +341,7 @@ impl Parse for Expression {
                 Token::False | Token::String(_) => {
                     Self::Primitive(Primitive::parse(parser, None)?)
                 },
-                Token::Bang | Token::Minus => {
+                Token::Bang => {
                     Self::Prefix(Prefix::parse(parser, None)?)
                 },
                 Token::LParen => {
@@ -369,17 +370,20 @@ impl Parse for Expression {
             )
         };
 
-        // println!("parse {expr:?}, cur: {:?}", parser.current_token);
+        println!("parse {expr:?}, cur: {:?}", parser.current_token);
+        println!("{:?}, {:?}", precedence, parser.current_precedence());
 
         while parser.current_token.as_ref()
             .is_some_and(|token| token.1 != Token::Semicolon) && 
             precedence.unwrap_or(Precedence::Lowest) < parser.current_precedence() 
         {
+            println!("hey");
             expr = match &parser.current_token {
                 Some((_, next_token, _)) => match next_token {
                     Token::Plus | Token::Minus | Token::Slash | 
                     Token::Asterisk | Token::Equal | Token::NotEqual | 
-                    Token::LessThan | Token::GreaterThan | Token::LessThanOrEqual | 
+                    Token::LessThan | Token::GreaterThan | 
+                    Token::LessThanOrEqual | Token::And | Token::Or |
                     Token::GreaterThanOrEqual | Token::Assign => {
                         Self::Infix(Infix::parse(parser, expr, precedence)?)
                     },
@@ -491,15 +495,25 @@ pub struct Prefix {
 impl Parse for Prefix {
     fn parse(
         parser: &mut crate::parser::Parser, 
-        precedence: Option<Precedence>
+        _precedence: Option<Precedence>
     ) -> Result<Self, crate::parser::ParseError> {
-        todo!();
+        let (start, token, _) = parser.next_token().unwrap();
+
+        let right = Expression::parse(parser, Some(Precedence::Prefix))?;
+
+        let end = right.location().end;
+
+        Ok(Self {
+            operator: token, 
+            right: Box::new(right),
+            location: SrcSpan { start, end }
+        })
     }
 }
 
 impl Display for Prefix {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!()
+        write!(f, "{}{}", self.operator.as_literal(), self.right)
     }
 }
 
@@ -556,22 +570,6 @@ impl Display for Infix {
     }
 }
 
-impl Infix {
-    pub fn from(
-        left: Expression, 
-        operator: Token, 
-        right: Expression,
-        location: SrcSpan
-    ) -> Self {
-        Infix {
-            left: Box::new(left),
-            operator,
-            right: Box::new(right),
-            location
-        }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct Conditional {
     pub condition: Infix,
@@ -583,7 +581,7 @@ pub struct Conditional {
 impl Parse for Conditional {
     fn parse(
         parser: &mut crate::parser::Parser, 
-        precedence: Option<crate::parser::Precedence>
+        _precedence: Option<crate::parser::Precedence>
     ) -> Result<Self, crate::parser::ParseError> {
         // println!("parsing conditional");
         let (start, _) = parser.expect_one(Token::If).unwrap();
