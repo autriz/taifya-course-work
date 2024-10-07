@@ -140,7 +140,7 @@ a + d;
 c != true;
 c == false;
 
-for i := 5 to 10 do
+for i := 5 to 10
     begin
         writeln i;
     end
@@ -241,7 +241,6 @@ end
         Token::Int(String::from("5")),
         Token::To,
         Token::Int(String::from("10")),
-        Token::Do,
         Token::Begin,
         Token::Writeln,
         Token::Ident(String::from("i")),

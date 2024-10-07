@@ -11,6 +11,7 @@ pub enum ParseErrorType {
         expected: Token,
     },
     ExpectedType,
+    ExpectedInfix
 }
 
 #[derive(Debug, PartialEq, Eq)]

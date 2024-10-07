@@ -119,7 +119,8 @@ impl Parser {
         {
             statements.push(Statement::parse(self, None)?);
 
-            self.step();
+            // println!("in parse {:?}, {:?}", self.current_token, self.next_token);
+            // self.step();
         }
 
         // check if end exists at the end of a file
@@ -140,15 +141,20 @@ impl Parser {
                 self.step();
                 Ok((start, end))
             },
-            Some((start, tok, end)) => parse_error(
-                ParseErrorType::UnexpectedToken {
-                    token: tok,
-                    expected: token,
-                },
-                SrcSpan { start, end }
-            ),
-            t => {
-                self.current_token = t;
+            Some(t) => {
+                let (start, tok, end) = t.clone();
+                self.current_token = Some(t);
+
+                parse_error(
+                    ParseErrorType::UnexpectedToken {
+                        token: tok,
+                        expected: token,
+                    },
+                    SrcSpan { start, end }
+                )
+            },
+            None => {
+                self.current_token = None;
 
                 parse_error(
                     ParseErrorType::UnexpectedEof,
@@ -185,6 +191,7 @@ impl Parser {
 
         match self.current_token.take() {
             Some((start, token, end)) if token.is_variable_type() => {
+                self.step();
                 Ok((start, IdentifierType::from(token), end))
             },
             tok => {
@@ -199,8 +206,10 @@ impl Parser {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 pub enum Precedence {
     Lowest,
+    Assign,
     Equals,
     LessGreater,
     Sum,
@@ -216,6 +225,7 @@ impl From<&Token> for Precedence {
             Token::LessThanOrEqual | Token::GreaterThanOrEqual => Self::LessGreater,
             Token::Plus | Token::Minus => Self::Sum,
             Token::Slash | Token::Asterisk => Self::Product,
+            Token::Assign => Self::Assign,
             _ => Self::Lowest,
         }
     }

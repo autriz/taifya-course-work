@@ -52,7 +52,7 @@ pub enum Token {
     Else, // else
     For, // for
     To, // to
-    Do, // do
+    Step, // step
     While, // while
     Next, // next
 
@@ -60,6 +60,7 @@ pub enum Token {
     Readln, // readln
     Writeln, // writeln
 
+    Comma, // ,
     Colon, // :
     Semicolon, // ;
     LParen, // (
@@ -83,7 +84,7 @@ impl Token {
             Token::Else |
             Token::For |
             Token::To |
-            Token::Do |
+            Token::Step |
             Token::While |
             Token::Next |
             Token::Readln |
@@ -165,11 +166,12 @@ impl Token {
             Token::Else => "else".to_string(),
             Token::For => "for".to_string(),
             Token::To => "to".to_string(),
-            Token::Do => "do".to_string(),
+            Token::Step => "step".to_string(),
             Token::While => "while".to_string(),
             Token::Next => "next".to_string(),
             Token::Readln => "readln".to_string(),
             Token::Writeln => "writeln".to_string(),
+            Token::Comma => ",".to_string(),
             Token::Colon => ":".to_string(),
             Token::Semicolon => ";".to_string(),
             Token::LParen => "(".to_string(),

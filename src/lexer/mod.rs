@@ -10,7 +10,7 @@ use crate::token::Token;
 pub type Spanned = (u32, Token, u32);
 pub type LexResult = std::result::Result<Spanned, LexicalError>;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SrcSpan {
     pub start: u32,
     pub end: u32,
@@ -57,7 +57,7 @@ pub fn str_to_keyword(word: &str) -> Option<Token> {
 		"end" => Token::End,
 		"for" => Token::For,
 		"to" => Token::To,
-		"do" => Token::Do,
+		"step" => Token::Step,
 		"while" => Token::While,
 		"next" => Token::Next,
 		"var" => Token::Var,
@@ -148,6 +148,7 @@ impl Lexer {
 					self.eat_one_char(Token::LessThan)
 				}
 			},
+			b',' => self.eat_one_char(Token::Comma),
 			b'%' => self.eat_one_char(Token::Percent),
 			b'@' => self.eat_one_char(Token::At),
 			b'$' => self.eat_one_char(Token::Dollar),
