@@ -6,10 +6,10 @@ use crate::{
 #[test]
 fn test_declarations() -> Result<(), ParseError> {
     let input =  r#"
-        var a, e: $
-        var b: !
-        var c: %
-        var d: @
+        var a, e: $;
+        var b: !;
+        var c: %;
+        var d: @;
     "#;
 
     let lexer = Lexer::new(input.to_string());
@@ -74,7 +74,7 @@ fn test_prefix() -> Result<(), ParseError> {
 fn test_blocks() -> Result<(), ParseError> {
     let input =  r#"
         begin
-            var a: $;
+            var a: $;;
 
             a := true;
 

@@ -32,7 +32,7 @@ impl Parse for Statement {
         parser: &mut crate::parser::Parser, 
         _precedence: Option<crate::parser::Precedence>
     ) -> Result<Self, crate::parser::ParseError> {
-        // println!("{:?}, {:?}", parser.current_token, parser.next_token);
+        // println!("stmt {:?}, {:?}", parser.current_token, parser.next_token);
         let stmt = match &parser.current_token {
             Some((_, Token::Var, _)) => Self::Declaration(Declaration::parse(parser, None)?),
             Some((_, Token::Begin, _)) if parser.is_parsing_program => Self::Block(Block::parse(parser, None)?),
@@ -44,12 +44,12 @@ impl Parse for Statement {
             )
         };
 
-        match &parser.next_token {
-            Some((_, tok, _)) if tok.is_ending() => {
-                parser.step();
-            },
-            _ => {}
-        }
+        // match &parser.next_token {
+        //     Some((_, tok, _)) if tok.is_ending() => {
+        //         parser.step();
+        //     },
+        //     _ => {}
+        // }
 
         Ok(stmt)
     }
@@ -100,16 +100,19 @@ impl Parse for Program {
         {
             statements.push(Statement::parse(parser, None)?);
 
-            // println!("prog: {:?}, {:?}", parser.current_token, parser.next_token);
+            println!("prog: {:?}, {:?}", parser.current_token, parser.next_token);
 
-            match (&parser.current_token, &parser.next_token) {
+            match (parser.current_token.clone(), parser.next_token.clone()) {
                 (Some((start, Token::Semicolon, end)), Some((_, Token::End, _))) => {
+                    parser.step();
+                    parser.step();
+
                     return parse_error(
                         ParseErrorType::UnexpectedToken { 
                             token: Token::Semicolon, 
                             expected: Token::End 
                         }, 
-                        SrcSpan { start: *start, end: *end }
+                        SrcSpan { start: start, end: end }
                     );
                 },
                 (Some((_, Token::Semicolon, _)), Some(_)) => {
@@ -128,7 +131,7 @@ impl Parse for Program {
                         token: tok.clone(), 
                         expected: Token::Semicolon 
                     },
-                    SrcSpan { start: *start, end: *end }
+                    SrcSpan { start: start, end: end }
                 ),
                 (None, None) => return parse_error(
                     ParseErrorType::UnexpectedEof,
@@ -165,7 +168,8 @@ pub enum IdentifierType {
     String, // @
     Float, // !
     Int, // %
-    Bool // $
+    Bool, // $
+    Undefined, // if var is empty
 }
 
 impl From<Token> for IdentifierType {
@@ -187,6 +191,7 @@ impl Display for IdentifierType {
             Self::Float => "!",
             Self::Int => "%",
             Self::Bool => "$",
+            Self::Undefined => ""
         };
 
         write!(f, "{type_str}")
@@ -205,43 +210,50 @@ impl Parse for Declaration {
         parser: &mut crate::parser::Parser, 
         _precedence: Option<crate::parser::Precedence>
     ) -> Result<Self, crate::parser::ParseError> {
-        let (start, _) = parser.expect_one(Token::Var).unwrap();
+        let (start, end) = parser.expect_one(Token::Var).unwrap();
 
         let mut names = vec![];
 
-        names.push(parser.expect_ident()?);
-        // println!("{names:?}");
-        // println!("{:?}", parser.current_token);
+        match parser.expect_ident() {
+            Ok(ident) => {
+                names.push(ident);
 
-        while let Ok(_) = parser.expect_one(Token::Comma) {
-            // println!("got comma");
-            names.push(parser.expect_ident()?);
+                while let Ok(_) = parser.expect_one(Token::Comma) {
+                    // println!("got comma");
+                    names.push(parser.expect_ident()?);
+                }
+
+                let (_, ident_type, _) = parser.parse_type_annotation(Token::Colon)?;
+
+                let idents = names.into_iter()
+                    .map(|ident| Identifier { 
+                        value: ident.1, 
+                        location: SrcSpan { 
+                            start: ident.0, 
+                            end: ident.2 
+                        } 
+                    })
+                    .collect::<Vec<Identifier>>();
+
+                let (_, end) = parser.expect_one(Token::Semicolon)?;
+
+                Ok(Self {
+                    names: idents,
+                    ident_type,
+                    location: SrcSpan {
+                        start,
+                        end
+                    }
+                })
+            },
+            Err(_) => Ok(
+                Declaration { 
+                    names: vec![], 
+                    ident_type: IdentifierType::Undefined, 
+                    location: SrcSpan { start, end } 
+                }
+            )
         }
-
-        // println!("{names:?}");
-        // println!("{:?}", parser.current_token);
-
-        let (_, ident_type, end) = parser.parse_type_annotation(Token::Colon)?;
-        // println!("{:?}", parser.current_token);
-
-        let idents = names.into_iter()
-            .map(|ident| Identifier { 
-                value: ident.1, 
-                location: SrcSpan { 
-                    start: ident.0, 
-                    end: ident.2 
-                } 
-            })
-            .collect::<Vec<Identifier>>();
-
-        Ok(Self {
-            names: idents,
-            ident_type,
-            location: SrcSpan {
-                start,
-                end
-            }
-        })
     }
 }
 
@@ -251,7 +263,11 @@ impl Display for Declaration {
             .map(|ident| ident.value.clone())
             .collect::<Vec<String>>();
 
-        write!(f, "var {}: {}", names.join(", "), self.ident_type)
+        if names.len() > 0 {
+            write!(f, "var {}: {};", names.join(", "), self.ident_type)
+        } else {
+            write!(f, "var")
+        }
     }
 }
 
@@ -275,14 +291,17 @@ impl Parse for Block {
         {
             expressions.push(Expression::parse(parser, None)?);
 
-            match (&parser.current_token, &parser.next_token) {
+            match (parser.current_token.clone(), parser.next_token.clone()) {
                 (Some((start, Token::Semicolon, end)), Some((_, Token::End, _))) => {
+                    parser.step();
+                    parser.step();
+
                     return parse_error(
                         ParseErrorType::UnexpectedToken { 
                             token: Token::Semicolon, 
                             expected: Token::End 
                         }, 
-                        SrcSpan { start: *start, end: *end }
+                        SrcSpan { start, end }
                     );
                 },
                 (Some((_, Token::End, _)), _) => {
@@ -330,7 +349,7 @@ impl Parse for Expression {
         parser: &mut crate::parser::Parser, 
         precedence: Option<crate::parser::Precedence>
     ) -> Result<Self, crate::parser::ParseError> {
-        // println!("{:?}", parser.current_token);
+        println!("{:?}", parser.current_token);
         let mut expr = match parser.current_token.clone() {
             Some((start, token, end)) => match token {
                 Token::Ident(ident) => {
