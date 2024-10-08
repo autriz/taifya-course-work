@@ -45,8 +45,7 @@ impl From<IdentifierType> for ValueType {
             IdentifierType::Int => ValueType::Integer,
             IdentifierType::Float => ValueType::Float,
             IdentifierType::String => ValueType::String,
-            IdentifierType::Bool => ValueType::Boolean,
-            IdentifierType::Undefined => unreachable!("value type should not be undefined")
+            IdentifierType::Bool => ValueType::Boolean
         }
     }
 }

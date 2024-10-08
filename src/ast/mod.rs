@@ -168,8 +168,7 @@ pub enum IdentifierType {
     String, // @
     Float, // !
     Int, // %
-    Bool, // $
-    Undefined, // if var is empty
+    Bool // $
 }
 
 impl From<Token> for IdentifierType {
@@ -190,8 +189,7 @@ impl Display for IdentifierType {
             Self::String => "@",
             Self::Float => "!",
             Self::Int => "%",
-            Self::Bool => "$",
-            Self::Undefined => ""
+            Self::Bool => "$"
         };
 
         write!(f, "{type_str}")
@@ -200,8 +198,7 @@ impl Display for IdentifierType {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Declaration {
-    pub names: Vec<Identifier>,
-    pub ident_type: IdentifierType,
+    pub identifiers: Vec<Identifiers>,
     pub location: SrcSpan,
 }
 
@@ -210,64 +207,75 @@ impl Parse for Declaration {
         parser: &mut crate::parser::Parser, 
         _precedence: Option<crate::parser::Precedence>
     ) -> Result<Self, crate::parser::ParseError> {
-        let (start, end) = parser.expect_one(Token::Var).unwrap();
+        let (start, mut end) = parser.expect_one(Token::Var).unwrap();
 
-        let mut names = vec![];
+        let mut identifiers_vec = vec![];
 
-        match parser.expect_ident() {
-            Ok(ident) => {
-                names.push(ident);
+        while let Ok(ident) = parser.expect_ident() {
+            let mut names = vec![ident];
 
-                while let Ok(_) = parser.expect_one(Token::Comma) {
-                    // println!("got comma");
-                    names.push(parser.expect_ident()?);
-                }
+            while let Ok(_) = parser.expect_one(Token::Comma) {
+                // println!("got comma");
+                names.push(parser.expect_ident()?);
+            }
 
-                let (_, ident_type, _) = parser.parse_type_annotation(Token::Colon)?;
+            let (_, names_type, _) = parser.parse_type_annotation(Token::Colon)?;
 
-                let idents = names.into_iter()
-                    .map(|ident| Identifier { 
-                        value: ident.1, 
-                        location: SrcSpan { 
-                            start: ident.0, 
-                            end: ident.2 
-                        } 
-                    })
-                    .collect::<Vec<Identifier>>();
+            println!("1| {:?}, {:?}", parser.current_token, parser.next_token);
 
-                let (_, end) = parser.expect_one(Token::Semicolon)?;
+            end = parser.expect_one(Token::Semicolon)?.1;
 
-                Ok(Self {
-                    names: idents,
-                    ident_type,
-                    location: SrcSpan {
-                        start,
-                        end
-                    }
+            println!("2| {:?}, {:?}", parser.current_token, parser.next_token);
+
+            let names = names.into_iter()
+                .map(|(start, value, end)| Identifier {
+                    value,
+                    location: SrcSpan { start, end }
                 })
-            },
-            Err(_) => Ok(
-                Declaration { 
-                    names: vec![], 
-                    ident_type: IdentifierType::Undefined, 
-                    location: SrcSpan { start, end } 
-                }
-            )
+                .collect::<Vec<Identifier>>();
+
+            identifiers_vec.push(Identifiers {
+                names,
+                names_type
+            });
         }
+
+        println!("3| {:?}, {:?}", parser.current_token, parser.next_token);
+        
+        Ok(Declaration {
+            identifiers: identifiers_vec,
+            location: SrcSpan { start, end }
+        })
     }
 }
 
 impl Display for Declaration {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let identifiers = self.identifiers.iter()
+            .map(|idents| format!("{}", idents))
+            .collect::<Vec<String>>();
+
+        if identifiers.len() > 0 {
+            write!(f, "var {}", identifiers.join(" "))
+        } else {
+            write!(f, "var")
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Identifiers {
+    pub names: Vec<Identifier>,
+    pub names_type: IdentifierType,
+}
+
+impl Display for Identifiers {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let names = self.names.iter()
             .map(|ident| ident.value.clone())
             .collect::<Vec<String>>();
 
-        if names.len() > 0 {
-            write!(f, "var {}: {};", names.join(", "), self.ident_type)
-        } else {
-            write!(f, "var")
-        }
+        write!(f, "{}: {};", names.join(", "), self.names_type)
     }
 }
 
@@ -338,6 +346,7 @@ pub enum Expression {
     Primitive(Primitive),
     Prefix(Prefix),
     Infix(Infix),
+    Assign(Assign),
     Conditional(Conditional),
     FixedLoop(FixedLoop),
     ConditionalLoop(ConditionalLoop),
@@ -372,11 +381,17 @@ impl Parse for Expression {
                 Token::LParen => {
                     parser.step();
 
-                    let expr = Expression::parse(parser, Some(Precedence::Lowest))?;
+                    let infix = match Expression::parse(parser, Some(Precedence::Lowest))? {
+                        Expression::Infix(infix) => infix,
+                        t => return parse_error(
+                            ParseErrorType::ExpectedInfix, 
+                            t.location()
+                        )
+                    };
 
                     let _ = parser.expect_one(Token::RParen)?;
 
-                    expr
+                    Self::Infix(infix)
                 },
                 Token::If => {
                     Self::Conditional(Conditional::parse(parser, None)?)
@@ -409,9 +424,12 @@ impl Parse for Expression {
                     Token::Asterisk | Token::Equal | Token::NotEqual | 
                     Token::LessThan | Token::GreaterThan | 
                     Token::LessThanOrEqual | Token::And | Token::Or |
-                    Token::GreaterThanOrEqual | Token::Assign => {
+                    Token::GreaterThanOrEqual => {
                         Self::Infix(Infix::parse(parser, expr, precedence)?)
                     },
+                    Token::Assign => {
+                        Self::Assign(Assign::parse(parser, expr, precedence)?)
+                    }
                     _ => break
                 },
                 None => break
@@ -431,6 +449,7 @@ impl Display for Expression {
             Self::Primitive(primitive) => write!(f, "{}", primitive),
             Self::Prefix(prefix) => write!(f, "{}", prefix),
             Self::Infix(infix) => write!(f, "{}", infix),
+            Self::Assign(assign) => write!(f, "{}", assign),
             Self::Conditional(conditional) => write!(f, "{}", conditional),
             Self::FixedLoop(loop_) => write!(f, "{}", loop_),
             Self::ConditionalLoop(loop_) => write!(f, "{}", loop_)
@@ -445,10 +464,61 @@ impl Expression {
             Self::Primitive(primitive) => primitive.location(),
             Self::Prefix(prefix) => prefix.location,
             Self::Infix(infix) => infix.location,
+            Self::Assign(assign) => assign.location,
             Self::Conditional(conditional) => conditional.location,
             Self::FixedLoop(loop_) => loop_.location,
             Self::ConditionalLoop(loop_) => loop_.location
         }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Assign {
+    pub identifier: Identifier,
+    pub value: Infix,
+    pub location: SrcSpan
+}
+
+impl InfixParse for Assign {
+    fn parse(
+        parser: &mut crate::parser::Parser, 
+        left: Expression, 
+        precedence: Option<Precedence>
+    ) -> Result<Self, crate::parser::ParseError> {
+        let identifier = match left {
+            Expression::Identifier(identifier) => identifier,
+            t => return parse_error(
+                ParseErrorType::ExpectedIdent, 
+                t.location()
+            )
+        };
+
+        let _ = parser.expect_one(Token::Assign)?;
+
+        let value = match Expression::parse(parser, precedence)? {
+            Expression::Infix(infix) => infix,
+            t => return parse_error(
+                ParseErrorType::ExpectedInfix, 
+                t.location()
+            )
+        };
+
+        let location  = SrcSpan {
+            start: identifier.location.start.clone(),
+            end: value.location.end.clone()
+        };
+
+        Ok(Assign {
+            identifier,
+            value,
+            location
+        })
+    }
+}
+
+impl Display for Assign {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} := {}", self.identifier, self.value)
     }
 }
 
@@ -543,10 +613,77 @@ impl Display for Prefix {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub enum InfixPrimitive {
+    Infix(Infix),
+    Primitive(Primitive)
+}
+
+impl Parse for InfixPrimitive {
+    fn parse(
+        parser: &mut crate::parser::Parser, 
+        precedence: Option<Precedence>
+    ) -> Result<Self, crate::parser::ParseError> {
+        let expr = match parser.current_token.clone() {
+            Some((start, token, end)) => match token {
+                Token::Int(_) | Token::Float(_) | 
+                Token::Hexadecimal(_) | Token::Octal(_) | 
+                Token::Binary(_) | Token::True | 
+                Token::False | Token::String(_) => {
+                    Self::Primitive(Primitive::parse(parser, None)?)
+                },
+                Token::LParen => {
+                    parser.step();
+    
+                    let infix = match Expression::parse(parser, Some(Precedence::Lowest))? {
+                        Expression::Infix(infix) => infix,
+                        t => return parse_error(
+                            ParseErrorType::ExpectedInfix, 
+                            t.location()
+                        )
+                    };
+    
+                    let _ = parser.expect_one(Token::RParen)?;
+    
+                    Self::Infix(infix)
+                }
+                _ => return parse_error(
+                    ParseErrorType::ExpectedPrimitiveOrInfix, 
+                    SrcSpan { start, end }
+                )
+            },
+            None => return parse_error(
+                ParseErrorType::UnexpectedEof, 
+                SrcSpan { start: 0, end: 0 }
+            )
+        };
+
+        Ok(expr)
+    }
+}
+
+impl InfixPrimitive {
+    pub fn location(&self) -> SrcSpan {
+        match self {
+            Self::Primitive(primitive) => primitive.location(),
+            Self::Infix(infix) => infix.location
+        }
+    }
+}
+
+impl Display for InfixPrimitive {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Primitive(primitive) => write!(f, "{}", primitive),
+            Self::Infix(infix) => write!(f, "{}", infix)
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct Infix {
-    pub left: Box<Expression>,
+    pub left: Box<InfixPrimitive>,
     pub operator: Token,
-    pub right: Box<Expression>,
+    pub right: Box<InfixPrimitive>,
     pub location: SrcSpan
 }
 
@@ -556,6 +693,15 @@ impl InfixParse for Infix {
         left: Expression,
         _precedence: Option<Precedence>
     ) -> Result<Self, crate::parser::ParseError> {
+        let left = match left {
+            Expression::Primitive(primitive) => InfixPrimitive::Primitive(primitive),
+            Expression::Infix(infix) => InfixPrimitive::Infix(infix),
+            t => return parse_error(
+                ParseErrorType::ExpectedPrimitiveOrInfix, 
+                t.location()
+            )
+        };
+
         let precedence = parser.current_precedence();
 
         let SrcSpan { start, .. } = left.location();
@@ -576,7 +722,7 @@ impl InfixParse for Infix {
             )
         };
 
-        let right = Expression::parse(parser, Some(precedence))?;
+        let right = InfixPrimitive::parse(parser, Some(precedence))?;
 
         let SrcSpan { end, .. } = right.location();
 
@@ -591,7 +737,7 @@ impl InfixParse for Infix {
 
 impl Display for Infix {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} {} {}", self.left, self.operator.as_literal(), self.right)
+        write!(f, "({} {} {})", self.left, self.operator.as_literal(), self.right)
     }
 }
 

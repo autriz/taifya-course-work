@@ -132,6 +132,17 @@ impl Token {
         }
     }
 
+    pub fn is_delimeter(&self) -> bool {
+        match self {
+            Token::LParen |
+            Token::RParen |
+            Token::Comma |
+            Token::Semicolon |
+            Token::Colon => true,
+            _ => self.is_operator()
+        }
+    }
+
     pub fn as_literal(&self) -> String {
         match self {
             Token::Ident(value) => format!("{}", value),

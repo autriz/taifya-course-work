@@ -3,8 +3,9 @@ use crate::{lexer::{LexicalError, SrcSpan}, token::Token};
 #[derive(Debug, PartialEq, Eq)]
 pub enum ParseErrorType {
     ExpectedIdent,
+    ExpectedPrimitiveOrInfix,
     ExpectedOperator,
-    UnexpectedReservedWord,
+    // UnexpectedReservedWord,
     UnexpectedEof,
     UnexpectedToken {
         token: Token,
@@ -25,10 +26,11 @@ impl ParseError {
     pub fn details(&self) -> (&'static str, Vec<String>) {
         match &self.error {
             ParseErrorType::ExpectedIdent => ("Expected identifier", vec![]),
+            ParseErrorType::ExpectedPrimitiveOrInfix => ("Expected primitive or nested infix", vec![]),
             ParseErrorType::ExpectedOperator => ("Expected operator", vec![]),
             ParseErrorType::ExpectedType => ("Expected type", vec![]),
             ParseErrorType::ExpectedInfix => ("Expected expression", vec![]),
-            ParseErrorType::UnexpectedReservedWord => ("Unexpected reserved word", vec![]),
+            // ParseErrorType::UnexpectedReservedWord => ("Unexpected reserved word", vec![]),
             ParseErrorType::UnexpectedToken { token, expected } => {
                 let found = match token {
                     Token::Int(_) => "an Int".to_string(),

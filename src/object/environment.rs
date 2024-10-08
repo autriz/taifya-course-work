@@ -4,7 +4,7 @@ use crate::eval::EvalError;
 
 use super::{Value, ValueType};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq)]
 pub struct Environment {
     pub store: HashMap<String, Value>,
 }

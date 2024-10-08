@@ -171,24 +171,28 @@ impl Parser {
     }
 
     pub fn expect_ident(&mut self) -> Result<(u32, String, u32), ParseError> {
-        let span = self.next_token();
+        match self.current_token.take() {
+            Some((start, Token::Ident(value), end)) => {
+                self.step();
+                Ok((start, value, end))
+            },
+            Some(t) => {
+                let (start, _, end) = t.clone();
+                self.current_token = Some(t);
 
-        match span {
-            Some((start, tok, end)) => match tok {
-                Token::Ident(ident) => Ok((start, ident, end)),
-                _ if tok.is_reserved_word() => parse_error(
-                    ParseErrorType::UnexpectedReservedWord,
-                    SrcSpan { start, end }
-                ),
-                _ => parse_error(
-                    ParseErrorType::ExpectedIdent, 
+                parse_error(
+                    ParseErrorType::ExpectedIdent,
                     SrcSpan { start, end }
                 )
             },
-            None => parse_error(
-                ParseErrorType::UnexpectedEof, 
-                SrcSpan { start: 0, end: 0 }
-            )
+            None => {
+                self.current_token = None;
+
+                parse_error(
+                    ParseErrorType::UnexpectedEof,
+                    SrcSpan { start: 0, end: 0 }
+                )
+            }
         }
     }
 

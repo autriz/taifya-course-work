@@ -135,12 +135,12 @@ fn test_conditionals() -> Result<(), ParseError> {
 #[test]
 fn test_values() -> Result<(), ParseError> {
     let input = r#"
-        10.15;
-        23;
-        10101b;
-        2345o;
-        1A5D9h;
-        "hello";
+        10.15
+        23
+        10101b
+        2345o
+        1A5D9h
+        "hello"
     "#;
 
     let lexer = Lexer::new(input.to_string());
@@ -159,8 +159,9 @@ fn test_values() -> Result<(), ParseError> {
 fn test_program() -> Result<(), ParseError> {
     let input = r#"
         begin
-            var a: $;
-            var b: !
+            var a: $; b: !;;
+            var c: !;;
+            var
         end
     "#;
 
