@@ -9,6 +9,8 @@ fn test_program() {
     let input = r#"
         begin
             var a, b, c: %; d, e, f: !;
+
+            
         end
     "#;
 

@@ -6,7 +6,7 @@ mod tests;
 
 use crate::{
     ast::{
-        Expression, IdentifierType, Module, Parsed, Statement
+        Expression, IdentifierType, Module, Parsed, Program
     }, 
     lexer::{
         Lexer, LexicalError, Spanned, SrcSpan
@@ -39,7 +39,6 @@ pub struct Parser {
     pub comments: Vec<SrcSpan>,
     pub lex_errors: Vec<LexicalError>,
 
-    pub is_parsing_program: bool,
     lexer: Lexer,
 }
 
@@ -50,7 +49,6 @@ impl Parser {
             next_token: None,
             comments: vec![],
             lex_errors: vec![],
-            is_parsing_program: false,
             lexer,
         };
 
@@ -103,16 +101,7 @@ impl Parser {
     }
 
     pub fn parse(&mut self) -> Result<Parsed, ParseError> {
-        let mut statements = vec![];
-
-        while self.current_token.as_ref()
-            .is_some_and(|(_, token, _)| *token != Token::Eof) 
-        {
-            statements.push(Statement::parse(self, None));
-
-            // println!("in parse {:?}, {:?}", self.current_token, self.next_token);
-            // self.step();
-        }
+        let program = Program::parse(self, None);
 
         if self.lex_errors.len() > 0 {
             return parse_error(
@@ -123,16 +112,9 @@ impl Parser {
             );
         }
 
-        let statements = statements.into_iter()
-            .map(|statement| {
-                statement.unwrap()
-            })
-            .collect::<Vec<Statement>>();
-
-
         let module = Module {
             name: "".into(),
-            statements,
+            program: program?,
         };
 
         Ok(Parsed {
@@ -154,7 +136,7 @@ impl Parser {
                 parse_error(
                     ParseErrorType::UnexpectedToken {
                         token: tok,
-                        expected: token,
+                        expected: vec![token.as_literal()],
                     },
                     SrcSpan { start, end }
                 )

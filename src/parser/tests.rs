@@ -6,10 +6,11 @@ use crate::{
 #[test]
 fn test_declarations() -> Result<(), ParseError> {
     let input =  r#"
-        var a, e: $;
-        var b: !;
-        var c: %;
-        var d: @;
+        begin
+            var a, e: $;
+                c, d: !;;
+            var d: @;
+        end
     "#;
 
     let lexer = Lexer::new(input.to_string());
@@ -17,9 +18,7 @@ fn test_declarations() -> Result<(), ParseError> {
 
     let parsed = parser.parse()?;
 
-    for stmt in parsed.module.statements {
-        println!("{}", stmt);
-    }
+    println!("{}", parsed.module.program);
 
     for err in parser.lex_errors.iter() {
         println!("{:?}", err);
@@ -31,12 +30,19 @@ fn test_declarations() -> Result<(), ParseError> {
 #[test]
 fn test_infixes() -> Result<(), ParseError> {
     let input = r#"
-        false && true
-        true || false
-        5 + 5
-        10 - 10
-        6 * 10
-        10 / 6
+        begin
+            var a, b: %;;
+
+            if (false && true) writeln true;
+            if (true || false) writeln 1;
+
+            begin
+                a := 5 + 5;
+                b := 10 - 10;
+                a := 6 * 10;
+                b := 10 / 6
+            end
+        end
     "#;
 
     let lexer = Lexer::new(input.to_string());
@@ -44,9 +50,7 @@ fn test_infixes() -> Result<(), ParseError> {
 
     let parsed = parser.parse()?;
 
-    for stmt in parsed.module.statements {
-        println!("{}", stmt);
-    }
+    println!("{}", parsed.module.program);
 
     Ok(())
 }
@@ -54,8 +58,10 @@ fn test_infixes() -> Result<(), ParseError> {
 #[test]
 fn test_prefix() -> Result<(), ParseError> {
     let input = r#"
-        !!!false == true
-        !true == !!false
+        begin
+            if (!!!false) writeln true;
+            if (!true == !!false) writeln false
+        end
     "#;
 
     let lexer = Lexer::new(input.to_string());
@@ -63,9 +69,7 @@ fn test_prefix() -> Result<(), ParseError> {
 
     let parsed = parser.parse()?;
 
-    for stmt in parsed.module.statements {
-        println!("{}", stmt);
-    }
+    println!("{}", parsed.module.program);
 
     Ok(())
 }
@@ -79,12 +83,12 @@ fn test_blocks() -> Result<(), ParseError> {
             a := true;
 
             begin
-                if (a == true) a;
+                if (a == true) writeln a;
                 a := false
             end;
 
             begin
-                if (a != true) a;
+                if (a != true) writeln a;
                 a := true
             end
         end
@@ -95,9 +99,7 @@ fn test_blocks() -> Result<(), ParseError> {
 
     let parsed = parser.parse()?;
 
-    for stmt in parsed.module.statements {
-        println!("{}", stmt);
-    }
+    println!("{}", parsed.module.program);
 
     Ok(())
 }
@@ -105,19 +107,21 @@ fn test_blocks() -> Result<(), ParseError> {
 #[test]
 fn test_conditionals() -> Result<(), ParseError> {
     let input = r#"
-        if (a == b) b else a
-        if (a == b) begin a end else b
-        if (a == b) a else begin b end
-        if (a == b) begin a end else begin b end
+        begin
+            if (a == b) writeln b else writeln a;
+            if (a == b) begin writeln a end else writeln b;
+            if (a == b) writeln a else begin writeln b end;
+            if (a == b) begin writeln a end else begin writeln b end;
 
-        while (a > 5) a := a + 1
-        while (a > 10) begin a := a + 1 end
+            while (a > 5) a := a + 1;
+            while (a > 10) begin a := a + 1 end;
 
-        for i := 0 to 10 i next
-        for i := 0 to 10 begin i end next
+            for i := 0 to 10 writeln i next;
+            for i := 0 to 10 begin writeln i end next;
 
-        for i := 0 to 10 step 2 i next
-        for i := 0 to 10 step 2 begin i end next
+            for i := 0 to 10 step 2 writeln i next;
+            for i := 0 to 10 step 2 begin writeln i end next
+        end
     "#;
 
     let lexer = Lexer::new(input.to_string());
@@ -125,9 +129,7 @@ fn test_conditionals() -> Result<(), ParseError> {
 
     let parsed = parser.parse()?;
 
-    for stmt in parsed.module.statements {
-        println!("{}", stmt);
-    }
+    println!("{}", parsed.module.program);
 
     Ok(())
 }
@@ -135,12 +137,24 @@ fn test_conditionals() -> Result<(), ParseError> {
 #[test]
 fn test_values() -> Result<(), ParseError> {
     let input = r#"
-        10.15
-        23
-        10101b
-        2345o
-        1A5D9h
-        "hello"
+        begin
+            var a, b, c, d: %;
+                e, f, g: !;
+                h, j: @;
+                k, l: $;;
+
+            a := 23;
+            b := 10101b;
+            c := 2345o;
+            d := 1A5D9h;
+            e := 10.15;
+            f := 1e-5;
+            g := 1.0e10;
+            h := "hello";
+            j := "world";
+            k := true;
+            l := false
+        end
     "#;
 
     let lexer = Lexer::new(input.to_string());
@@ -148,9 +162,7 @@ fn test_values() -> Result<(), ParseError> {
 
     let parsed = parser.parse()?;
 
-    for stmt in parsed.module.statements {
-        println!("{}", stmt);
-    }
+    println!("{}", parsed.module.program);
 
     Ok(())
 }
@@ -170,7 +182,7 @@ fn test_program() -> Result<(), ParseError> {
 
     let parsed = parser.parse()?;
 
-    println!("{}", parsed.module.statements[0]);
+    println!("{}", parsed.module.program);
 
     Ok(())
 }

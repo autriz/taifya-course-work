@@ -3,16 +3,16 @@ use crate::{lexer::{LexicalError, SrcSpan}, token::Token};
 #[derive(Debug, PartialEq, Eq)]
 pub enum ParseErrorType {
     ExpectedIdent,
-    ExpectedPrimitiveOrInfix,
     ExpectedOperator,
     // UnexpectedReservedWord,
+    UnexpectedSemicolonBeforeEnd,
     UnexpectedEof,
     UnexpectedToken {
         token: Token,
-        expected: Token,
+        expected: Vec<String>,
     },
     ExpectedType,
-    ExpectedInfix,
+    ExpectedValue,
     LexError { error: LexicalError },
 }
 
@@ -26,10 +26,10 @@ impl ParseError {
     pub fn details(&self) -> (&'static str, Vec<String>) {
         match &self.error {
             ParseErrorType::ExpectedIdent => ("Expected identifier", vec![]),
-            ParseErrorType::ExpectedPrimitiveOrInfix => ("Expected primitive or nested infix", vec![]),
             ParseErrorType::ExpectedOperator => ("Expected operator", vec![]),
+            ParseErrorType::UnexpectedSemicolonBeforeEnd => ("Unexpected semicolon before `end`", vec![]),
             ParseErrorType::ExpectedType => ("Expected type", vec![]),
-            ParseErrorType::ExpectedInfix => ("Expected expression", vec![]),
+            ParseErrorType::ExpectedValue => ("Expected value after `:=`", vec![]),
             // ParseErrorType::UnexpectedReservedWord => ("Unexpected reserved word", vec![]),
             ParseErrorType::UnexpectedToken { token, expected } => {
                 let found = match token {
@@ -41,12 +41,16 @@ impl ParseError {
                     Token::String(_) => "a String".to_string(),
                     Token::Ident(_) => "an Identifier".to_string(),
                     _ if token.is_reserved_word() => format!("the keyword `{}`", token.as_literal()),
-                    _ => token.as_literal()
+                    _ => format!("`{}`", token.as_literal())
                 };
 
-                let messages = std::iter::once(
-                    format!("Found {found}, expected `{}`", expected.as_literal())
-                ).collect();
+                let expected = expected.iter()
+                    .map(|token| token.to_owned())
+                    .collect::<Vec<String>>();
+
+                let messages = std::iter::once(format!("Found {found}, expected one of: "))
+                    .chain(expected.iter().map(|s| format!("- {s}")))
+                    .collect();
 
                 ("Not expected this", messages)
             },

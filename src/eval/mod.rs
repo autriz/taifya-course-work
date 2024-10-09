@@ -17,7 +17,7 @@ use crate::{
 pub fn eval(parsed: crate::ast::Parsed, env: Rc<RefCell<Environment>>) -> Object {
     let mut object = NULL;
 
-    for statement in parsed.module.statements {
+    for statement in parsed.module.program.statements {
         object = eval_statement(statement, env.clone());
     }
 
@@ -25,100 +25,102 @@ pub fn eval(parsed: crate::ast::Parsed, env: Rc<RefCell<Environment>>) -> Object
 }
 
 pub fn eval_statement(statement: crate::ast::Statement, env: Rc<RefCell<Environment>>) -> Object {
-    match statement {
-        Statement::Expression(expression) => eval_expression(expression, env),
-        Statement::Program(program) => eval_program(program, env),
-        Statement::Block(block) => eval_block(block, env),
-        Statement::Declaration(declaration) => eval_declaration(declaration, env),
-    }
+    todo!();
+    // match statement {
+    //     Statement::Expression(expression) => eval_expression(expression, env),
+    //     Statement::Program(program) => eval_program(program, env),
+    //     Statement::Block(block) => eval_block(block, env),
+    //     Statement::Declaration(declaration) => eval_declaration(declaration, env),
+    // }
 }
 
 fn eval_expression(expression: crate::ast::Expression, env: Rc<RefCell<Environment>>) -> Object {
-    match expression {
-        Expression::Primitive(primitive) => {
-            match primitive {
-                Primitive::Int { value, .. } => {
-                    Object::Value(Value::Integer { value })
-                },
-                Primitive::Float { value, .. } => {
-                    Object::Value(Value::Float { value })
-                },
-                Primitive::Hex { value, .. } => {
-                    Object::Value(Value::Integer { value })
-                },
-                Primitive::Bin { value, .. } => {
-                    Object::Value(Value::Integer { value })
-                },
-                Primitive::Octal { value, .. } => {
-                    Object::Value(Value::Integer { value })
-                },
-                Primitive::String { value, .. } => {
-                    Object::Value(Value::String { value })
-                }
-                Primitive::Bool { value, .. } => {
-                    Object::Value(Value::Boolean { value })
-                }
-            }
-        },
-        Expression::Prefix(prefix) => {
-            let right = eval_expression(*prefix.right, env);
+    todo!();
+    // match expression {
+    //     Expression::Primitive(primitive) => {
+    //         match primitive {
+    //             Primitive::Int { value, .. } => {
+    //                 Object::Value(Value::Integer { value })
+    //             },
+    //             Primitive::Float { value, .. } => {
+    //                 Object::Value(Value::Float { value })
+    //             },
+    //             Primitive::Hex { value, .. } => {
+    //                 Object::Value(Value::Integer { value })
+    //             },
+    //             Primitive::Bin { value, .. } => {
+    //                 Object::Value(Value::Integer { value })
+    //             },
+    //             Primitive::Octal { value, .. } => {
+    //                 Object::Value(Value::Integer { value })
+    //             },
+    //             Primitive::String { value, .. } => {
+    //                 Object::Value(Value::String { value })
+    //             }
+    //             Primitive::Bool { value, .. } => {
+    //                 Object::Value(Value::Boolean { value })
+    //             }
+    //         }
+    //     },
+    //     Expression::Prefix(prefix) => {
+    //         let right = eval_expression(*prefix.right, env);
 
-            eval_prefix(prefix.operator, right)
-        },
-        Expression::Infix(infix) => {
-            // let left = eval_expression(*infix.left, env.clone());
+    //         eval_prefix(prefix.operator, right)
+    //     },
+    //     Expression::Infix(infix) => {
+    //         // let left = eval_expression(*infix.left, env.clone());
 
-            let operator = infix.operator;
+    //         let operator = infix.operator;
 
-            // let right = eval_expression(*infix.right, env.clone());
+    //         // let right = eval_expression(*infix.right, env.clone());
 
-            // eval_infix(left, operator, right)
-            todo!()
-        },
-        Expression::Assign(assign) => {
-            let infix = assign.value;
-            // let value = eval_infix(infix.left, infix.operator, infix.right);
+    //         // eval_infix(left, operator, right)
+    //         todo!()
+    //     },
+    //     Expression::Assign(assign) => {
+    //         let infix = assign.value;
+    //         // let value = eval_infix(infix.left, infix.operator, infix.right);
 
-            // env.borrow_mut().set(assign.identifier.value, value);
+    //         // env.borrow_mut().set(assign.identifier.value, value);
 
-            NULL
-        }
-        Expression::Conditional(conditional) => {
-            todo!();
+    //         NULL
+    //     }
+    //     Expression::Conditional(conditional) => {
+    //         todo!();
 
-            // let condition = eval_infix(*conditional.condition, env.clone());
+    //         // let condition = eval_infix(*conditional.condition, env.clone());
 
-            // match condition {
+    //         // match condition {
                 
-            // }
-        },
-        Expression::ConditionalLoop(loop_) => {
-            todo!()
-        },
-        Expression::FixedLoop(loop_) => {
-            todo!()
-        }
-        Expression::Identifier(identifier) => {
-            let val = env.borrow().get(&identifier.value);
+    //         // }
+    //     },
+    //     Expression::ConditionalLoop(loop_) => {
+    //         todo!()
+    //     },
+    //     Expression::FixedLoop(loop_) => {
+    //         todo!()
+    //     }
+    //     Expression::Identifier(identifier) => {
+    //         let val = env.borrow().get(&identifier.value);
 
-            todo!();
-        },
-        // Expression::FunctionCall(func_call) => {
-        //     let function = eval_expression(*func_call.function, env.clone());
+    //         todo!();
+    //     },
+    //     // Expression::FunctionCall(func_call) => {
+    //     //     let function = eval_expression(*func_call.function, env.clone());
 
-        //     if is_error(&function) {
-        //         return function;
-        //     }
+    //     //     if is_error(&function) {
+    //     //         return function;
+    //     //     }
 
-        //     let args = eval_expressions(func_call.arguments, env.clone());
+    //     //     let args = eval_expressions(func_call.arguments, env.clone());
 
-        //     if args.len() == 1 && is_error(&args[0]) {
-        //         return args[0].clone();
-        //     }
+    //     //     if args.len() == 1 && is_error(&args[0]) {
+    //     //         return args[0].clone();
+    //     //     }
 
-        //     apply_function(function, args)
-        // }
-    }
+    //     //     apply_function(function, args)
+    //     // }
+    // }
 }
 
 fn eval_prefix(operator: crate::token::Token, right: Object) -> Object {
@@ -252,11 +254,12 @@ fn eval_infix(left: Object, operator: crate::token::Token, right: Object) -> Obj
     }
 }
 
-fn eval_block(block: crate::ast::Block, env: Rc<RefCell<Environment>>) -> Object {
+fn eval_block(nested: crate::ast::Nested, env: Rc<RefCell<Environment>>) -> Object {
     let mut object = NULL;
 
-    for expression in block.expressions {
-        object = eval_expression(expression, env.clone());
+    for operator in nested.operators {
+        todo!();
+        // object = eval_expression(expression, env.clone());
     }
 
     object
