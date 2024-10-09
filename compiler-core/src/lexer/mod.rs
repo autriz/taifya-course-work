@@ -28,6 +28,26 @@ impl Display for SrcSpan {
 	}
 }
 
+pub fn str_to_keyword(word: &str) -> Option<Token> {
+	Some(match word {
+		"begin" => Token::Begin,
+		"end" => Token::End,
+		"for" => Token::For,
+		"to" => Token::To,
+		"step" => Token::Step,
+		"while" => Token::While,
+		"next" => Token::Next,
+		"var" => Token::Var,
+		"if" => Token::If,
+		"else" => Token::Else,
+		"true" => Token::True,
+		"false" => Token::False,
+		"readln" => Token::Readln,
+		"writeln" => Token::Writeln,
+		_ => return None
+	})
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum NumberType {
 	Hex,
@@ -49,26 +69,6 @@ impl Display for Lexer {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		write!(f, "Lexer {{\n\tposition: {},\n\tnext_position: {},\n\tch: {},\n}}", self.position, self.next_position, String::from_utf8_lossy(&[self.ch]).to_string())
 	}
-}
-
-pub fn str_to_keyword(word: &str) -> Option<Token> {
-	Some(match word {
-		"begin" => Token::Begin,
-		"end" => Token::End,
-		"for" => Token::For,
-		"to" => Token::To,
-		"step" => Token::Step,
-		"while" => Token::While,
-		"next" => Token::Next,
-		"var" => Token::Var,
-		"if" => Token::If,
-		"else" => Token::Else,
-		"true" => Token::True,
-		"false" => Token::False,
-		"readln" => Token::Readln,
-		"writeln" => Token::Writeln,
-		_ => return None
-	})
 }
 
 impl Lexer {
@@ -253,8 +253,9 @@ impl Lexer {
 
         let end_pos = self.position;
 
-		let ident = String::from_utf8_lossy(&self.input[start_pos..end_pos])
-			.to_string();
+		let ident = String::from_utf8_lossy(
+			&self.input[start_pos..end_pos]
+		).to_string();
 
         if let Some(tok) = str_to_keyword(&ident) {
             Ok((start_pos as u32, tok, end_pos as u32))
@@ -306,10 +307,7 @@ impl Lexer {
 		}
 
 		while self.ch.is_ascii_hexdigit() || self.ch == b'.' {
-			// println!("{} -> {}", String::from_utf8_lossy(&[self.ch]).to_string(), String::from_utf8_lossy(&[self.peek()]).to_string());
-			// println!("{}, !{}, {}", is_radix(self.ch), self.peek().is_ascii_hexdigit(), self.peek() != b'.');
 			if is_radix(self.ch) && !self.peek().is_ascii_hexdigit() && self.peek() != b'.' {
-				// println!("got radix");
 				break;
 			} else if !self.ch.is_ascii_hexdigit() && self.ch != b'.' {
 				break;
@@ -383,8 +381,6 @@ impl Lexer {
 		let value = String::from_utf8_lossy(&self.input[start_pos..end_pos])
 			.to_string();
 
-		// println!("{value}");
-
 		let expected_type = match self.ch {
 			b'B' | b'b' => NumberType::Binary,
 			b'O' | b'o' => NumberType::Octal,
@@ -393,8 +389,6 @@ impl Lexer {
 			_ if has_period || has_exponent => NumberType::Float,
 			_ => NumberType::Int
 		};
-
-		// println!("{expected_type:?}");
 
 		if is_radix(self.ch) {
 			self.next_char();

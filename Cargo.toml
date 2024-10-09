@@ -1,7 +1,3 @@
-[package]
-name = "lang"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-thiserror = "1.0.64"
+[workspace]
+resolver = "2"
+members = ["compiler-cli", "compiler-core"]

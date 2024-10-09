@@ -412,9 +412,8 @@ impl Parse for Conditional {
         let (start, _) = parser.expect_one(Token::If)?;
         let _ = parser.expect_one(Token::LParen)?;
 
-        // println!("{:?}, {:?}", parser.current_token, parser.next_token);
         let condition = Expression::parse(parser, None)?;
-        // println!("{:?}, {:?}", parser.current_token, parser.next_token);
+        
         let _ = parser.expect_one(Token::RParen)?;
 
         let resolution = Box::new(Operator::parse(parser, None)?);

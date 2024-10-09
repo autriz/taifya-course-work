@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::{lexer::Lexer, object::environment::Environment, parser::Parser};
+use crate::{lexer::{LexResult, Lexer, Spanned}, object::environment::Environment, parser::Parser};
 
 use super::{eval, EvalError};
 
@@ -8,7 +8,7 @@ use super::{eval, EvalError};
 fn test_program() {
     let input = r#"
         begin
-            var a, b, c: %; d, e, f: !;
+            var a, b, c: %; d, e, f: !;^
 
             
         end

@@ -1,0 +1,9 @@
+[package]
+name = "lang"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+lang-core = { path = "../compiler-core", package = "lang-core" }
+ctrlc = { version = "3", features = ["termination"] }
+clap = { version = "4.5.18", features = ["derive"] }
