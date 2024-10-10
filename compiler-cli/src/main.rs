@@ -1,6 +1,10 @@
+mod rlpl;
+mod rppl;
+
 use std::path::PathBuf;
 
 use clap::Parser;
+use lang_core::build::compile;
 
 #[derive(Parser)]
 enum Command {
@@ -9,16 +13,29 @@ enum Command {
     },
     Run {
         path: PathBuf,
-    }
+    },
+    Rlpl,
+    Rppl
 }
 
 fn main() {
-    let result = match Command::parse() {
-        Command::Analyze { 
-            path 
-        } => todo!("lexer -> parser -> analyzer"),
+    let _ = match Command::parse() {
+        Command::Analyze { path } => {
+            match compile(path) {
+                Ok(_) => {},
+                Err(err) => {
+                    println!("{err}")
+                }
+            };
+        },
         Command::Run {
             path
-        } => todo!("lexer -> parser -> analyzer -> eval")
+        } => todo!("lexer -> parser -> analyzer -> eval"),
+        Command::Rlpl => {
+            let _  = rlpl::start();
+        },
+        Command::Rppl => {
+            let _ = rppl::start();
+        }
     };
 }
