@@ -72,12 +72,12 @@ impl Display for Lexer {
 }
 
 impl Lexer {
-    pub fn new(input: String) -> Self {
+    pub fn new(input: &str) -> Self {
         let mut lexer = Self {
             position: 0,
             next_position: 0,
             ch: 0,
-            input: input.into_bytes(),
+            input: input.as_bytes().to_vec(),
         };
 
         lexer.next_char();

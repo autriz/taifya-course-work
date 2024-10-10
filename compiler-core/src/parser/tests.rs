@@ -1,6 +1,6 @@
 use crate::{
     lexer::Lexer, 
-    parser::{ParseError, Parser}
+    parser::{parse_module, ParseError, Parser}
 };
 
 #[test]
@@ -13,16 +13,9 @@ fn test_declarations() -> Result<(), ParseError> {
         end
     "#;
 
-    let lexer = Lexer::new(input.to_string());
-    let mut parser = Parser::new(lexer);
-
-    let parsed = parser.parse()?;
+    let parsed = parse_module(input)?;
 
     println!("{}", parsed.module.program);
-
-    for err in parser.lex_errors.iter() {
-        println!("{:?}", err);
-    }
 
     Ok(())
 }
@@ -45,10 +38,7 @@ fn test_infixes() -> Result<(), ParseError> {
         end
     "#;
 
-    let lexer = Lexer::new(input.to_string());
-    let mut parser = Parser::new(lexer);
-
-    let parsed = parser.parse()?;
+    let parsed = parse_module(input)?;
 
     println!("{}", parsed.module.program);
 
@@ -64,10 +54,7 @@ fn test_prefix() -> Result<(), ParseError> {
         end
     "#;
 
-    let lexer = Lexer::new(input.to_string());
-    let mut parser = Parser::new(lexer);
-
-    let parsed = parser.parse()?;
+    let parsed = parse_module(input)?;
 
     println!("{}", parsed.module.program);
 
@@ -94,10 +81,7 @@ fn test_blocks() -> Result<(), ParseError> {
         end
     "#;
 
-    let lexer = Lexer::new(input.to_string());
-    let mut parser = Parser::new(lexer);
-
-    let parsed = parser.parse()?;
+    let parsed = parse_module(input)?;
 
     println!("{}", parsed.module.program);
 
@@ -124,10 +108,7 @@ fn test_conditionals() -> Result<(), ParseError> {
         end
     "#;
 
-    let lexer = Lexer::new(input.to_string());
-    let mut parser = Parser::new(lexer);
-
-    let parsed = parser.parse()?;
+    let parsed = parse_module(input)?;
 
     println!("{}", parsed.module.program);
 
@@ -157,10 +138,7 @@ fn test_values() -> Result<(), ParseError> {
         end
     "#;
 
-    let lexer = Lexer::new(input.to_string());
-    let mut parser = Parser::new(lexer);
-
-    let parsed = parser.parse()?;
+    let parsed = parse_module(input)?;
 
     println!("{}", parsed.module.program);
 
@@ -177,7 +155,7 @@ fn test_program() -> Result<(), ParseError> {
         end
     "#;
 
-    let lexer = Lexer::new(input.to_string());
+    let lexer = Lexer::new(input);
     let mut parser = Parser::new(lexer);
 
     let parsed = parser.parse()?;

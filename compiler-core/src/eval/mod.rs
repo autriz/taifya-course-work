@@ -1,15 +1,12 @@
-mod error;
-pub use error::{EvalError, EvalErrorType};
-
 #[cfg(test)]
 mod tests;
 
 use std::{cell::RefCell, rc::Rc};
 
 use crate::{
-    ast::{Expression, Primitive, Statement},
+    environment::Environment, 
     object::{
-        environment::Environment, Object, Value, FALSE, NULL, TRUE
+        Object, Value, FALSE, NULL, TRUE
     }, 
     token::Token
 };

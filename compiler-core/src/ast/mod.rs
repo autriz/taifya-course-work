@@ -12,6 +12,7 @@ pub struct Parsed {
 pub struct Module {
     pub name: String,
     pub program: Program,
+    pub identifiers: Vec<Identifier>,
 }
 
 // program -> begin <statement> {; <statement> } end
@@ -516,7 +517,7 @@ impl Display for FixedLoop {
 // conditional_loop -> while "(" <expression> ")" <operator>
 #[derive(Debug, Clone, PartialEq)]
 pub struct ConditionalLoop {
-    pub expression: Expression,
+    pub condition: Expression,
     pub block: Box<Operator>,
     pub location: SrcSpan
 }
@@ -530,7 +531,7 @@ impl Parse for ConditionalLoop {
 
         let _ = parser.expect_one(Token::LParen)?;
 
-        let expression = Expression::parse(parser, None)?;
+        let condition = Expression::parse(parser, None)?;
         let _ = parser.expect_one(Token::RParen)?;
 
         let block = Box::new(Operator::parse(parser, None)?);
@@ -539,7 +540,7 @@ impl Parse for ConditionalLoop {
         let location = SrcSpan { start, end };
 
         Ok(Self {
-            expression,
+            condition,
             block,
             location
         })
@@ -548,7 +549,7 @@ impl Parse for ConditionalLoop {
 
 impl Display for ConditionalLoop {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "while ({}) {}", self.expression, self.block)
+        write!(f, "while ({}) {}", self.condition, self.block)
     }
 }
 
@@ -878,10 +879,7 @@ impl Parse for Primitive {
         match span {
             Some((start, token, end)) => match token {
                 Token::Binary(value) => {
-                    let value = match i64::from_str_radix(&value, 2) {
-                        Ok(value) => value,
-                        Err(err) => todo!("parse err InvalidPrimitiveValue")
-                    };
+                    let value = i64::from_str_radix(&value, 2).unwrap();
 
                     Ok(Self::Int {
                         value,
@@ -889,10 +887,7 @@ impl Parse for Primitive {
                     })
                 },
                 Token::Octal(value) => {
-                    let value = match i64::from_str_radix(&value, 8) {
-                        Ok(value) => value,
-                        Err(err) => todo!("parse err InvalidPrimitiveValue")
-                    };
+                    let value = i64::from_str_radix(&value, 8).unwrap();
 
                     Ok(Self::Int {
                         value,
@@ -900,10 +895,7 @@ impl Parse for Primitive {
                     })
                 },
                 Token::Int(value) => {
-                    let value = match i64::from_str_radix(&value, 10) {
-                        Ok(value) => value,
-                        Err(err) => todo!("parse err InvalidPrimitiveValue")
-                    };
+                    let value = i64::from_str_radix(&value, 10).unwrap();
 
                     Ok(Self::Int {
                         value,
@@ -911,10 +903,7 @@ impl Parse for Primitive {
                     })
                 },
                 Token::Hexadecimal(value) => {
-                    let value = match i64::from_str_radix(&value, 16) {
-                        Ok(value) => value,
-                        Err(err) => todo!("parse err InvalidPrimitiveValue")
-                    };
+                    let value = i64::from_str_radix(&value, 16).unwrap();
 
                     Ok(Self::Int {
                         value,
@@ -922,10 +911,7 @@ impl Parse for Primitive {
                     })
                 },
                 Token::Float(value) => {
-                    let value = match value.parse() {
-                        Ok(value) => value,
-                        Err(err) => todo!("parse err InvalidPrimitiveValue")
-                    };
+                    let value = value.parse().unwrap();
 
                     Ok(Self::Float {
                         value,

@@ -1,4 +1,5 @@
 mod error;
+
 pub use error::{ ParseError, ParseErrorType };
 
 #[cfg(test)]
@@ -115,6 +116,7 @@ impl Parser {
         let module = Module {
             name: "".into(),
             program: program?,
+            identifiers: vec![],
         };
 
         Ok(Parsed {
@@ -207,6 +209,14 @@ pub enum Precedence {
     Sum,
     Product,
     Prefix
+}
+
+pub fn parse_module(src: &str) -> Result<Parsed, ParseError> {
+    let lexer = Lexer::new(src);
+    let mut parser = Parser::new(lexer);
+    let parsed = parser.parse()?;
+    
+    Ok(parsed)
 }
 
 impl From<&Token> for Precedence {

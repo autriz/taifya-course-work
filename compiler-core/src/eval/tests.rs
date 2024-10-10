@@ -1,8 +1,8 @@
 use std::{cell::RefCell, rc::Rc};
 
-use crate::{lexer::{LexResult, Lexer, Spanned}, object::environment::Environment, parser::Parser};
+use crate::{environment::Environment, parser::parse_module};
 
-use super::{eval, EvalError};
+use super::eval;
 
 #[test]
 fn test_program() {
@@ -14,7 +14,7 @@ fn test_program() {
         end
     "#;
 
-    let parsed = Parser::new(Lexer::new(input.to_string())).parse().unwrap();
+    let parsed = parse_module(input).unwrap();
 
     let env = Rc::new(RefCell::new(Environment::new()));
 

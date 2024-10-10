@@ -1,6 +1,6 @@
 use crate::{lexer::{LexicalError, SrcSpan}, token::Token};
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ParseErrorType {
     ExpectedIdent,
     ExpectedOperator,
@@ -16,7 +16,7 @@ pub enum ParseErrorType {
     LexError { error: LexicalError },
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParseError {
     pub error: ParseErrorType,
     pub span: SrcSpan
