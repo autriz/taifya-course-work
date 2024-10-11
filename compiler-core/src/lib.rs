@@ -4,7 +4,6 @@ pub mod ast;
 pub mod parser;
 pub mod analyzer;
 pub mod object;
-pub mod line_numbers;
 pub mod environment;
 pub mod error;
 pub mod warning;
