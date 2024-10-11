@@ -92,7 +92,7 @@ fn eval_operator(operator: crate::ast::Operator, env: Rc<RefCell<Environment>>) 
             for i in (ident_value..=to_value).step_by(step as usize) {
                 eval_operator(*loop_.block.clone(), env.clone());
 
-                env.borrow_mut().set(ident.clone(), Value::Integer { value: i })
+                env.borrow_mut().set(ident.clone(), Value::Integer { value: i + step })
             }
         },
         Operator::Input(input) => {
@@ -107,7 +107,12 @@ fn eval_operator(operator: crate::ast::Operator, env: Rc<RefCell<Environment>>) 
 
                 stdin.read_line(&mut buf).unwrap();
 
-                let value = parse_input(buf, ident_type);
+                let escaped = buf.split_whitespace()
+                    .nth(0)
+                    .unwrap()
+                    .to_string();
+
+                let value = parse_input(escaped, ident_type);
 
                 env.borrow_mut().set(ident.value.clone(), value);
             });
@@ -117,8 +122,12 @@ fn eval_operator(operator: crate::ast::Operator, env: Rc<RefCell<Environment>>) 
                 .map(|expression| eval_expression(expression, env.clone()))
                 .collect::<Vec<Value>>();
 
-            values.iter()
-                .for_each(|value| println!("{}", value));
+            let string = values.iter()
+                .map(|value| format!("{}", value))
+                .collect::<Vec<String>>()
+                .join("");
+
+            println!("{string}");
         }
     }
 }
