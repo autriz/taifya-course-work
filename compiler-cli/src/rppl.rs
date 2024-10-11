@@ -29,9 +29,7 @@ pub fn start() -> std::io::Result<()> {
 
 				match parser.parse() {
                     Ok(parsed) => {
-                        for stmt in parsed.module.program.statements {
-                            println!("{}", stmt);
-                        }
+						println!("{}", parsed.module.program);
                     },
                     Err(err) => {
                         let (message, messages) = err.details();
