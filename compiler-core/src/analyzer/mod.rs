@@ -318,7 +318,7 @@ fn get_infix_type(
     let left_type = get_expression_type(*infix.left.clone(), env)?;
     let right_type = get_expression_type(*infix.right.clone(), env)?;
 
-    let allowed_types = get_allowed_types_for(infix.operator);
+    let allowed_types = get_allowed_types_for(&infix.operator);
 
     let is_left_allowed = allowed_types.contains(&left_type);
     let is_right_allowed = allowed_types.contains(&right_type);
@@ -344,6 +344,29 @@ fn get_infix_type(
         })
     };
 
+    let value_type = match value_type {
+        ValueType::Integer => match infix.operator {
+            Token::LessThan
+            | Token::LessThanOrEqual
+            | Token::GreaterThan
+            | Token::GreaterThanOrEqual
+            | Token::Equal
+            | Token::NotEqual => ValueType::Boolean,
+            _ => value_type
+        },
+        ValueType::Float => match infix.operator {
+            Token::LessThan
+            | Token::GreaterThan => ValueType::Boolean,
+            _ => value_type
+        },
+        ValueType::String => match infix.operator {
+            Token::Equal
+            | Token::NotEqual => ValueType::Boolean,
+            _ => value_type
+        },
+        ValueType::Boolean => value_type
+    };
+
     Ok(value_type)
 }
 
@@ -359,7 +382,7 @@ fn get_prefix_type(
     }
 }
 
-fn get_allowed_types_for(operator: Token) -> Vec<ValueType> {
+fn get_allowed_types_for(operator: &Token) -> Vec<ValueType> {
     if !operator.is_operator() {
         return vec![];
     }
