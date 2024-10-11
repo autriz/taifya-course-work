@@ -163,12 +163,13 @@ impl Warning {
                         text: "".into(),
                         level: Level::Warning,
                         location: Some(Location {
-                            path: path.to_path_buf(),
                             src: src.clone(),
+                            path: path.to_path_buf(),
                             label: Label {
                                 text: None,
                                 span: *location,
                             },
+                            extra_labels: vec![]
                         }),
                     }
                 },
@@ -178,12 +179,13 @@ impl Warning {
                         text: "".into(),
                         level: Level::Warning,
                         location: Some(Location {
-                            path: path.to_path_buf(),
                             src: src.clone(),
+                            path: path.to_path_buf(),
                             label: Label {
                                 text: None,
                                 span: *location,
                             },
+                            extra_labels: vec![]
                         }),
                     }
                 },
@@ -194,12 +196,13 @@ impl Warning {
                         // hint: Some("You can safely remove it.".into()),
                         level: Level::Warning,
                         location: Some(Location {
-                            path: path.to_path_buf(),
                             src: src.clone(),
+                            path: path.to_path_buf(),
                             label: Label {
                                 text: Some("This value is never used".into()),
                                 span: *location,
                             },
+                            extra_labels: vec![]
                         }),
                     }
                 },
@@ -209,12 +212,13 @@ impl Warning {
                         text: "".into(),
                         level: Level::Warning,
                         location: Some(Location {
-                            path: path.to_path_buf(),
                             src: src.clone(),
+                            path: path.to_path_buf(),
                             label: Label {
                                 text: None,
                                 span: *location,
                             },
+                            extra_labels: vec![]
                         }),
                     }
                 },
@@ -224,12 +228,13 @@ impl Warning {
                         text: "".into(),
                         level: Level::Warning,
                         location: Some(Location {
-                            path: path.to_path_buf(),
                             src: src.clone(),
+                            path: path.to_path_buf(),
                             label: Label {
                                 text: None,
                                 span: *location,
                             },
+                            extra_labels: vec![]
                         }),
                     }
                 }

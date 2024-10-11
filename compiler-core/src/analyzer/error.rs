@@ -44,6 +44,11 @@ pub enum Error {
         location: SrcSpan,
         variable: String,
     },
+    VariableRedeclaration {
+        location_a: SrcSpan,
+        location_b: SrcSpan,
+        variable: String,
+    },
     InvalidUnaryOperation {
         location: SrcSpan
     },
@@ -61,6 +66,7 @@ impl Error {
         match self {
             Error::TypeMismatch { location, .. }
             | Error::VariableNotDeclared { location, .. }
+            | Error::VariableRedeclaration { location_b: location, .. }
             | Error::InvalidUnaryOperation { location }
             | Error::OperatorMismatch { location_a: location, .. } => location.start
         }

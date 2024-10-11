@@ -61,12 +61,13 @@ impl Error {
                     text,
                     level: Level::Error,
                     location: Some(Location {
+                        src: src.clone(),
+                        path: path.clone(),
                         label: Label {
                             text: Some(label.to_string()),
                             span: adjusted_location,
                         },
-                        path: path.clone(),
-                        src: src.clone(),
+                        extra_labels: vec![],
                     }),
                 }]
             },
@@ -85,12 +86,13 @@ impl Error {
                                     text,
                                     level: Level::Error,
                                     location: Some(Location {
+                                        src: src.clone(),
+                                        path: path.clone(),
                                         label: Label {
                                             text: None,
                                             span: *location,
                                         },
-                                        path: path.clone(),
-                                        src: src.clone(),
+                                        extra_labels: vec![]
                                     }),
                                 })
                             },
@@ -106,12 +108,13 @@ impl Error {
                                     text,
                                     level: Level::Error,
                                     location: Some(Location {
+                                        src: src.clone(),
+                                        path: path.clone(),
                                         label: Label {
                                             text: None,
                                             span: *location,
                                         },
-                                        path: path.clone(),
-                                        src: src.clone(),
+                                        extra_labels: vec![]
                                     }),
                                 })
                             },
@@ -123,15 +126,41 @@ impl Error {
                                     text,
                                     level: Level::Error,
                                     location: Some(Location {
+                                        src: src.clone(),
+                                        path: path.clone(),
                                         label: Label {
                                             text: None,
                                             span: *location,
                                         },
-                                        path: path.clone(),
-                                        src: src.clone()
+                                        extra_labels: vec![]
                                     }),
                                 })
                             },
+                            AnalyzerError::VariableRedeclaration { 
+                                location_a, 
+                                location_b,
+                                variable
+                            } => {
+                                let text = format!("Variable `{variable}` was declared multiple times.");
+
+                                diagnostics.push(Diagnostic {
+                                    title: "Multiple declarations".into(),
+                                    text,
+                                    level: Level::Error,
+                                    location: Some(Location {
+                                        src: src.clone(),
+                                        path: path.clone(),
+                                        label: Label {
+                                            text: Some("Another defined here".into()),
+                                            span: *location_b,
+                                        },
+                                        extra_labels: vec![Label {
+                                            text: Some("First defined here".into()),
+                                            span: *location_a
+                                        }]
+                                    }),
+                                })
+                            }
                             AnalyzerError::OperatorMismatch { 
                                 location_a, 
                                 location_b, 
@@ -152,12 +181,13 @@ impl Error {
                                     text: text_a,
                                     level: Level::Error,
                                     location: Some(Location {
+                                        src: src.clone(),
+                                        path: path.clone(),
                                         label: Label {
                                             text: None,
                                             span: *location_a,
                                         },
-                                        path: path.clone(),
-                                        src: src.clone()
+                                        extra_labels: vec![]
                                     }),
                                 });
                                     
@@ -166,12 +196,13 @@ impl Error {
                                     text: text_b,
                                     level: Level::Error,
                                     location: Some(Location {
+                                        src: src.clone(),
+                                        path: path.clone(),
                                         label: Label {
                                             text: None,
                                             span: *location_b,
                                         },
-                                        path: path.clone(),
-                                        src: src.clone()
+                                        extra_labels: vec![]
                                     }),
                                 });
                             }

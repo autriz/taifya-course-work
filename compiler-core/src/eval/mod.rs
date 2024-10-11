@@ -20,10 +20,15 @@ fn eval_statement(statement: crate::ast::Statement, env: Rc<RefCell<Environment>
         Statement::Declaration(declaration) => {
             for identifiers in declaration.identifiers {
                 for name in identifiers.names {
-                    env.borrow_mut().declare(
-                        name.value.clone(), 
-                        identifiers.names_type.to_owned().into()
-                    );
+                    match env.borrow().get(&name.value) {
+                        None => {
+                            env.borrow_mut().declare(
+                                name.value.clone(), 
+                                identifiers.names_type.to_owned().into()
+                            );
+                        }
+                        Some(_) => panic!("multiple declarations")
+                    }
                 }
             }
         },

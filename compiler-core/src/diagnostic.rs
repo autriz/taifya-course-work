@@ -8,7 +8,7 @@ use crate::lexer::SrcSpan;
 
 pub enum Level {
     Warning,
-    Error
+    Error,
 }
 
 pub struct Label {
@@ -17,9 +17,9 @@ pub struct Label {
 }
 
 impl Label {
-    pub fn to_codespan_label(&self, file_id: usize) -> CodespanLabel<usize> {
+    pub fn to_codespan_label(&self, file_id: usize, label_style: Option<LabelStyle>) -> CodespanLabel<usize> {
         let label = CodespanLabel::new(
-            LabelStyle::Primary,
+            label_style.unwrap_or(LabelStyle::Primary),
             file_id,
             (self.span.start as usize)..(self.span.end as usize),
         );
@@ -34,6 +34,7 @@ pub struct Location {
     pub src: String,
     pub path: PathBuf,
     pub label: Label,
+    pub extra_labels: Vec<Label>,
 }
 
 pub struct Diagnostic {
@@ -65,7 +66,12 @@ impl Diagnostic {
 
         let file_id = files.add(location_path, location_src);
 
-        let label = location.label.to_codespan_label(file_id);
+        let mut labels = vec![location.label.to_codespan_label(file_id, None)];
+
+        location.extra_labels.iter()
+            .for_each(|label| {
+                labels.push(label.to_codespan_label(file_id, Some(LabelStyle::Secondary)))
+            });
 
         let severity = match self.level {
             Level::Error => Severity::Error,
@@ -74,7 +80,7 @@ impl Diagnostic {
 
         let diagnostic = codespan_reporting::diagnostic::Diagnostic::new(severity)
             .with_message(&self.title)
-            .with_labels(vec![label]);
+            .with_labels(labels);
 
         let config = codespan_reporting::term::Config::default();
         codespan_reporting::term::emit(buf, &config, &files, &diagnostic)

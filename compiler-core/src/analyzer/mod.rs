@@ -58,11 +58,22 @@ impl ModuleAnalyzer {
                 for identifiers in declaration.identifiers {
                     for name in identifiers.names {
                         // println!("declare {}", name.value);
-                        env.declare(
-                            name.value.clone(), 
-                            identifiers.names_type.to_owned().into()
-                        );
-                        env.init_usage(name.value, name.location, &mut self.problems);
+                        match env.get(&name.value) {
+                            None => {
+                                env.declare(
+                                    name.value.clone(), 
+                                    identifiers.names_type.to_owned().into()
+                                );
+                                env.init_usage(name.value, name.location, &mut self.problems);
+                            }
+                            Some(_) => {
+                                self.problems.error(Error::VariableRedeclaration { 
+                                    location_a: env.usages.get(&name.value).unwrap().0, 
+                                    location_b: name.location,
+                                    variable: name.value
+                                })
+                            }
+                        }
                     }
                 }
             },
