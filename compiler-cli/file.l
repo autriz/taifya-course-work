@@ -1,9 +1,34 @@
+(* Начало программы *)
 begin
-    var a, b, c: %;;
+    (* Объявление переменных *)
+    var a, b, c, d: %;
+        e: !;;
 
-    a := 5;
+    (* Использование восьмеричного числа *)
+    a := 5o;
 
-    var b: !;;
+    (* Цикл for *)
+    for c := 1 to 10 step 2 writeln "got", c next
 
-    writeln "Hello, world!"
+    (* Цикл while *)
+    while (c < 20) c := c + 1
+
+    (* Вывод в консоль *)
+    writeln "after while: ", c
+
+    (* Ввод данных из консоли *)
+    readln d;
+
+    (* Условная операция *)
+    if (d == 42) 
+        b := 10h
+    (* Вложенный блок *)
+    else begin 
+        b := 10o; 
+        e := 12.34;
+
+        writeln "hi" 
+    end;
+
+    writeln b
 end
