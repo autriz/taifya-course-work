@@ -1,3 +1,6 @@
 [workspace]
 resolver = "2"
 members = ["compiler-cli", "compiler-core"]
+
+[workspace.dependencies]
+termcolor = "1.4.1"

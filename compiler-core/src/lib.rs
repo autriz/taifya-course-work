@@ -7,5 +7,7 @@ pub mod object;
 pub mod line_numbers;
 pub mod environment;
 pub mod error;
+pub mod warning;
+pub mod diagnostic;
 pub mod build;
-pub mod eval;
+// pub mod eval;

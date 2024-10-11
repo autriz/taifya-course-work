@@ -1,4 +1,4 @@
-use crate::lexer::SrcSpan;
+use crate::{lexer::SrcSpan, object::ValueType};
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Problems {
@@ -36,21 +36,24 @@ impl Problems {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Error {
     TypeMismatch {
-        location: SrcSpan
+        location: SrcSpan,
+        expected: ValueType,
+        got: ValueType,
     },
     VariableNotDeclared {
-        location: SrcSpan
+        location: SrcSpan,
+        variable: String,
     },
     InvalidUnaryOperation {
         location: SrcSpan
-    }
+    },
 }
 
 impl Error {
     pub fn start_location(&self) -> u32 {
         match self {
-            Error::TypeMismatch { location } |
-            Error::VariableNotDeclared { location } |
+            Error::TypeMismatch { location, .. } |
+            Error::VariableNotDeclared { location, .. } |
             Error::InvalidUnaryOperation { location } => location.start
         }
     }
@@ -69,7 +72,7 @@ pub enum Warning {
 impl Warning {
     pub fn location(&self) -> SrcSpan {
         match self {
-            Warning::UnusedVariable { location } |
+            Warning::UnusedVariable { location, .. } |
             Warning::UnreachableElseClause { location } => *location
         }
     }

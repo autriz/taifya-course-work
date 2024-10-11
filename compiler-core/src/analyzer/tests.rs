@@ -1,4 +1,6 @@
-use crate::{line_numbers::LineNumbers, parser::parse_module};
+use std::{path::PathBuf, rc::Rc};
+
+use crate::{line_numbers::LineNumbers, parser::parse_module, warning::{NullWarningEmitterIO, TypeWarningEmitter, WarningEmitter}};
 
 use super::ModuleAnalyzer;
 
@@ -19,5 +21,13 @@ fn test_module() {
 
     println!("{line_numbers:?}");
 
-    let _ = ModuleAnalyzer::analyze(parsed.module, /*line_numbers, "./".into()*/);
+    let warnings = Rc::new(NullWarningEmitterIO);
+
+    let emitter = &TypeWarningEmitter::new(
+        PathBuf::new(), 
+        input.to_string(), 
+        WarningEmitter::new(warnings.clone())
+    );
+
+    let _ = ModuleAnalyzer::analyze(parsed.module, &emitter/*line_numbers, "./".into()*/);
 }

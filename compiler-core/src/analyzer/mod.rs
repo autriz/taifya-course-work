@@ -1,4 +1,5 @@
 pub mod error;
+
 use error::{Error, Problems};
 
 #[cfg(test)]
@@ -6,10 +7,9 @@ mod tests;
 
 use crate::{
     ast::{Expression, Identifier, Infix, Module, Operator, Prefix, Primitive, Statement}, 
-    environment::Environment, 
-    line_numbers::LineNumbers, 
+    environment::Environment,
     object::ValueType, 
-    token::Token
+    token::Token, warning::TypeWarningEmitter
 };
 
 pub enum Outcome<T, E> {
@@ -25,6 +25,7 @@ pub struct ModuleAnalyzer {
 impl ModuleAnalyzer {
     pub fn analyze(
         module: Module, 
+        warnings: &TypeWarningEmitter,
         // line_numbers: LineNumbers, 
         // src_path: PathBuf
     ) -> Outcome<Module, Vec<Error>> {
@@ -35,7 +36,6 @@ impl ModuleAnalyzer {
         let mut env = Environment::new();
 
         let statements = module.program.statements.clone();
-        let statements_count = statements.len();
 
         for statement in statements {
             analyzer.analyze_statement(statement, &mut env);
@@ -45,9 +45,9 @@ impl ModuleAnalyzer {
 
         env.convert_unused_to_warnings(&mut analyzer.problems);
 
-        let warnings = analyzer.problems.take_warnings();
-        for warning in &warnings {
-            println!("{:?}", warning.clone());
+        let warning_list = analyzer.problems.take_warnings();
+        for warning in &warning_list {
+            warnings.emit(warning.clone());
         }
 
         match Vec::try_from(analyzer.problems.take_errors()) {
@@ -62,7 +62,7 @@ impl ModuleAnalyzer {
             Statement::Declaration(declaration) => {
                 for identifiers in declaration.identifiers {
                     for name in identifiers.names {
-                        println!("declare {}", name.value);
+                        // println!("declare {}", name.value);
                         env.declare(
                             name.value.clone(), 
                             identifiers.names_type.to_owned().into()
@@ -98,7 +98,11 @@ impl ModuleAnalyzer {
                 };
                 
                 if identifier_type != value_type {
-                    self.problems.error(Error::TypeMismatch { location: value.location() })
+                    self.problems.error(Error::TypeMismatch { 
+                        location: value.location(),
+                        expected: identifier_type,
+                        got: value_type
+                    })
                 }
             },
             Operator::Nested(nested) => {
@@ -116,7 +120,11 @@ impl ModuleAnalyzer {
                 };
 
                 if condition_type != ValueType::Boolean {
-                    self.problems.error(Error::TypeMismatch { location: conditional.condition.location() });
+                    self.problems.error(Error::TypeMismatch { 
+                        location: conditional.condition.location(),
+                        expected: ValueType::Boolean,
+                        got: condition_type
+                    });
                 }
 
                 self.analyze_operator(*conditional.resolution, env);
@@ -135,7 +143,11 @@ impl ModuleAnalyzer {
                 };
 
                 if condition_type != ValueType::Boolean {
-                    self.problems.error(Error::TypeMismatch { location: loop_.condition.location() });
+                    self.problems.error(Error::TypeMismatch { 
+                        location: loop_.condition.location(),
+                        expected: ValueType::Boolean,
+                        got: condition_type
+                    });
                 }
 
                 self.analyze_operator(*loop_.block, env);
@@ -153,7 +165,11 @@ impl ModuleAnalyzer {
                 };
 
                 if identifier_type != ValueType::Integer {
-                    self.problems.error(Error::TypeMismatch { location: identifier.location });
+                    self.problems.error(Error::TypeMismatch { 
+                        location: identifier.location,
+                        expected: identifier_type,
+                        got: ValueType::Integer
+                    });
                 }
 
                 let value = assignment.value;
@@ -166,7 +182,11 @@ impl ModuleAnalyzer {
                 };
 
                 if value_type != ValueType::Integer {
-                    self.problems.error(Error::TypeMismatch { location: value.location() });
+                    self.problems.error(Error::TypeMismatch { 
+                        location: value.location(),
+                        expected: ValueType::Integer,
+                        got: value_type 
+                    });
                 }
 
                 let to_type = match get_expression_type(loop_.to.clone(), env) {
@@ -178,7 +198,11 @@ impl ModuleAnalyzer {
                 };
 
                 if to_type != ValueType::Integer {
-                    self.problems.error(Error::TypeMismatch { location: loop_.to.location() });
+                    self.problems.error(Error::TypeMismatch { 
+                        location: loop_.to.location(),
+                        expected: ValueType::Integer,
+                        got: to_type
+                    });
                 }
 
                 if let Some(step) = loop_.step {
@@ -191,7 +215,11 @@ impl ModuleAnalyzer {
                     };
 
                     if step_type != ValueType::Integer {
-                        self.problems.error(Error::TypeMismatch { location: step.location() });
+                        self.problems.error(Error::TypeMismatch { 
+                            location: step.location(),
+                            expected: ValueType::Integer,
+                            got: step_type
+                        });
                     }
                 }
 
@@ -200,7 +228,10 @@ impl ModuleAnalyzer {
             Operator::Input(input) => {
                 input.identifiers.iter().for_each(|ident| {
                     if let None = env.get(&ident.value) {
-                        self.problems.error(Error::VariableNotDeclared { location: ident.location });
+                        self.problems.error(Error::VariableNotDeclared { 
+                            location: ident.location,
+                            variable: ident.value.clone()
+                        });
                     }
                 });
             },
@@ -240,7 +271,10 @@ fn get_identifier_type(
 ) -> Result<ValueType, Error> {
     match env.get(&identifier.value) {
         Some(value) => Ok(value._type()),
-        None => Err(Error::VariableNotDeclared { location: identifier.location })
+        None => Err(Error::VariableNotDeclared {
+            location: identifier.location,
+            variable: identifier.value
+        })
     }
 }
 
@@ -263,7 +297,11 @@ fn get_infix_type(
     if left_type == right_type {
         Ok(left_type)
     } else {
-        Err(Error::TypeMismatch { location: infix.right.location() })
+        Err(Error::TypeMismatch {
+            location: infix.right.location(),
+            expected: left_type,
+            got: right_type
+        })
     }
 
     // check for invalid combinations
