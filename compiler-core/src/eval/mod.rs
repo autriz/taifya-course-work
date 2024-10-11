@@ -4,289 +4,276 @@ mod tests;
 use std::{cell::RefCell, rc::Rc};
 
 use crate::{
-    environment::Environment, 
-    object::{
-        Object, Value, FALSE, NULL, TRUE
-    }, 
-    token::Token
+    ast::{Expression, Operator, Primitive, Statement}, environment::Environment, object::{
+        Value, ValueType, FALSE, TRUE
+    }, token::Token
 };
 
-pub fn eval(parsed: crate::ast::Parsed, env: Rc<RefCell<Environment>>) -> Object {
-    let mut object = NULL;
-
-    for statement in parsed.module.program.statements {
-        object = eval_statement(statement, env.clone());
+pub fn eval(module: crate::ast::Module, env: Rc<RefCell<Environment>>) {
+    for statement in module.program.statements {
+        eval_statement(statement, env.clone());
     }
-
-    object
 }
 
-pub fn eval_statement(statement: crate::ast::Statement, env: Rc<RefCell<Environment>>) -> Object {
-    todo!();
-    // match statement {
-    //     Statement::Expression(expression) => eval_expression(expression, env),
-    //     Statement::Program(program) => eval_program(program, env),
-    //     Statement::Block(block) => eval_block(block, env),
-    //     Statement::Declaration(declaration) => eval_declaration(declaration, env),
-    // }
+fn eval_statement(statement: crate::ast::Statement, env: Rc<RefCell<Environment>>) {
+    match statement {
+        Statement::Declaration(declaration) => {
+            for identifiers in declaration.identifiers {
+                for name in identifiers.names {
+                    env.borrow_mut().declare(
+                        name.value.clone(), 
+                        identifiers.names_type.to_owned().into()
+                    );
+                }
+            }
+        },
+        Statement::Operator(operator) => eval_operator(operator, env)
+    }
 }
 
-fn eval_expression(expression: crate::ast::Expression, env: Rc<RefCell<Environment>>) -> Object {
-    todo!();
-    // match expression {
-    //     Expression::Primitive(primitive) => {
-    //         match primitive {
-    //             Primitive::Int { value, .. } => {
-    //                 Object::Value(Value::Integer { value })
-    //             },
-    //             Primitive::Float { value, .. } => {
-    //                 Object::Value(Value::Float { value })
-    //             },
-    //             Primitive::Hex { value, .. } => {
-    //                 Object::Value(Value::Integer { value })
-    //             },
-    //             Primitive::Bin { value, .. } => {
-    //                 Object::Value(Value::Integer { value })
-    //             },
-    //             Primitive::Octal { value, .. } => {
-    //                 Object::Value(Value::Integer { value })
-    //             },
-    //             Primitive::String { value, .. } => {
-    //                 Object::Value(Value::String { value })
-    //             }
-    //             Primitive::Bool { value, .. } => {
-    //                 Object::Value(Value::Boolean { value })
-    //             }
-    //         }
-    //     },
-    //     Expression::Prefix(prefix) => {
-    //         let right = eval_expression(*prefix.right, env);
-
-    //         eval_prefix(prefix.operator, right)
-    //     },
-    //     Expression::Infix(infix) => {
-    //         // let left = eval_expression(*infix.left, env.clone());
-
-    //         let operator = infix.operator;
-
-    //         // let right = eval_expression(*infix.right, env.clone());
-
-    //         // eval_infix(left, operator, right)
-    //         todo!()
-    //     },
-    //     Expression::Assign(assign) => {
-    //         let infix = assign.value;
-    //         // let value = eval_infix(infix.left, infix.operator, infix.right);
-
-    //         // env.borrow_mut().set(assign.identifier.value, value);
-
-    //         NULL
-    //     }
-    //     Expression::Conditional(conditional) => {
-    //         todo!();
-
-    //         // let condition = eval_infix(*conditional.condition, env.clone());
-
-    //         // match condition {
-                
-    //         // }
-    //     },
-    //     Expression::ConditionalLoop(loop_) => {
-    //         todo!()
-    //     },
-    //     Expression::FixedLoop(loop_) => {
-    //         todo!()
-    //     }
-    //     Expression::Identifier(identifier) => {
-    //         let val = env.borrow().get(&identifier.value);
-
-    //         todo!();
-    //     },
-    //     // Expression::FunctionCall(func_call) => {
-    //     //     let function = eval_expression(*func_call.function, env.clone());
-
-    //     //     if is_error(&function) {
-    //     //         return function;
-    //     //     }
-
-    //     //     let args = eval_expressions(func_call.arguments, env.clone());
-
-    //     //     if args.len() == 1 && is_error(&args[0]) {
-    //     //         return args[0].clone();
-    //     //     }
-
-    //     //     apply_function(function, args)
-    //     // }
-    // }
-}
-
-fn eval_prefix(operator: crate::token::Token, right: Object) -> Object {
+fn eval_operator(operator: crate::ast::Operator, env: Rc<RefCell<Environment>>) {
     match operator {
-        Token::Bang => {
-            match right {
-                TRUE => FALSE,
-                FALSE => TRUE,
-                NULL => TRUE,
-                Object::Value(Value::Integer { value }) => {
-                    match value {
-                        0 => TRUE,
-                        _ => FALSE,
+        Operator::Assignment(assignment) => eval_assignment(assignment, env.clone()),
+        Operator::Nested(nested) => {
+            nested.operators.into_iter().for_each(|operator|
+                eval_operator(operator, env.clone())
+            )
+        },
+        Operator::Conditional(conditional) => {
+            let condition = eval_expression(conditional.condition, env.clone());
+
+            match condition {
+                TRUE => eval_operator(*conditional.resolution, env.clone()),
+                FALSE => match conditional.alternative {
+                    Some(alternative) => eval_operator(*alternative, env.clone()),
+                    None => {}
+                },
+                _ => panic!("invalid condition type")
+            };
+        },
+        Operator::ConditionalLoop(loop_) => {
+            while let TRUE = eval_expression(loop_.condition.clone(), env.clone()) {
+                eval_operator(*loop_.block.clone(), env.clone());
+            }
+        },
+        Operator::FixedLoop(loop_) => {
+            eval_assignment(loop_.assignment.clone(), env.clone());
+
+            let ident = loop_.assignment.identifier.value;
+
+            // check if ident._type() is int
+            let ident_value = env.borrow().get(&ident)
+                .cloned()
+                .unwrap();
+
+            let ident_value = match ident_value {
+                Value::Integer { value } => value,
+                _ => panic!("invalid type")
+            };
+
+            // check if to._type() is int
+            let to_value = match eval_expression(loop_.to, env.clone()) {
+                Value::Integer { value } => value,
+                _ => panic!("invalid type"),
+            };
+
+            // check if it has step and step._type() is int
+            let step = match loop_.step {
+                Some(step) => {
+                    match eval_expression(step, env.clone()) {
+                        Value::Integer { value } => value,
+                        _ => panic!("invalid type")
                     }
                 },
-                _ => Object::Error { message: format!("cannot apply unary operator `{}` to `{:?}`", operator.as_literal(), right._type()) },
+                None => 1
+            };
+
+            // repeat block evaluation and increment ident value by step until value >= to
+            for i in (ident_value..=to_value).step_by(step as usize) {
+                eval_operator(*loop_.block.clone(), env.clone());
+
+                env.borrow_mut().set(ident.clone(), Value::Integer { value: i })
             }
         },
-        _ => Object::Error { message: format!("unknown unary operator `{}`", operator.as_literal()) }
+        Operator::Input(input) => {
+            let stdin = std::io::stdin();
+
+            input.identifiers.iter().for_each(|ident| {
+                let ident_type = env.borrow_mut().get(&ident.value)
+                    .expect("undeclared variable")
+                    ._type();
+
+                let mut buf = String::from("");
+
+                stdin.read_line(&mut buf).unwrap();
+
+                let value = parse_input(buf, ident_type);
+
+                env.borrow_mut().set(ident.value.clone(), value);
+            });
+        },
+        Operator::Output(output) => {
+            let values = output.expressions.into_iter()
+                .map(|expression| eval_expression(expression, env.clone()))
+                .collect::<Vec<Value>>();
+
+            values.iter()
+                .for_each(|value| println!("{}", value));
+        }
     }
 }
 
-fn eval_infix(left: Object, operator: crate::token::Token, right: Object) -> Object {
+fn parse_input(input: String, value_type: ValueType) -> Value {
+    match value_type {
+        ValueType::Integer => Value::Integer { value: input.parse::<i64>().unwrap() },
+        ValueType::Float => Value::Float { value: input.parse::<f64>().unwrap() },
+        ValueType::String => Value::String { value: input.to_owned() },
+        ValueType::Boolean => match input.as_str() {
+            "true" => Value::Boolean { value: true },
+            "false" => Value::Boolean { value: false },
+            _ => panic!("unknown value"),
+        }
+    }
+}
+
+fn eval_assignment(assignment: crate::ast::Assignment, env: Rc<RefCell<Environment>>) {
+    let identifier = assignment.identifier.clone();
+
+    let identifier_type = env.borrow_mut().get(&identifier.value)
+        .expect("undeclared variable")
+        ._type();
+
+    let value = eval_expression(assignment.value, env.clone());
+
+    if identifier_type != value._type() {
+        panic!("type mismatch");
+    }
+    
+    env.borrow_mut().set(identifier.value, value);
+}
+
+fn eval_expression(
+    expression: crate::ast::Expression, 
+    env: Rc<RefCell<Environment>>
+) -> Value {
+    match expression {
+        Expression::Identifier(ident) => env.borrow()
+            .get(&ident.value).cloned().unwrap(),
+        Expression::Primitive(primitive) => match primitive {
+            Primitive::Int { value, .. } => Value::Integer { value },
+            Primitive::Float { value, .. } => Value::Float { value },
+            Primitive::String { value, .. } => Value::String { value },
+            Primitive::Bool { value, .. } => Value::Boolean { value }
+        },
+        Expression::Infix(infix) => eval_infix(infix, env.clone()),
+        Expression::Prefix(prefix) => eval_prefix(prefix, env.clone()),
+        Expression::Nested { expression, .. } => eval_expression(*expression, env.clone())
+    }
+}
+
+fn eval_prefix(
+    prefix: crate::ast::Prefix, 
+    env: Rc<RefCell<Environment>>
+) -> Value {
+    match prefix.operator {
+        Token::Bang => {
+            let value = eval_expression(*prefix.expression, env.clone());
+
+            match value {
+                FALSE => TRUE,
+                TRUE => FALSE,
+                _ => panic!("cannot apply unary operator `{}` to `{:?}`", prefix.operator.as_literal(), value._type())
+            }
+        },
+        _ => panic!("unknown unary operator `{}`", prefix.operator.as_literal())
+    }
+}
+
+fn eval_infix(
+    infix: crate::ast::Infix, 
+    env: Rc<RefCell<Environment>>
+) -> Value {
+    let left = eval_expression(*infix.left, env.clone());
+    let right = eval_expression(*infix.right, env.clone());
+
     match (left, right) {
         (
-            Object::Value(Value::Integer { value: left_value }), 
-            Object::Value(Value::Integer { value: right_value })
+            Value::Integer { value: left_value }, 
+            Value::Integer { value: right_value }
         ) => {
-            match operator {
-                Token::Plus => Object::Value(Value::Integer { value: left_value + right_value }),
-                Token::Minus => Object::Value(Value::Integer { value: left_value - right_value }),
-                Token::Asterisk => Object::Value(Value::Integer { value: left_value * right_value }),
-                Token::Slash => Object::Value(Value::Integer { value: left_value / right_value }),
-                Token::LessThan => Object::Value(Value::Boolean { value: left_value < right_value }),
-                Token::LessThanOrEqual => Object::Value(Value::Boolean { value: left_value <= right_value }),
-                Token::GreaterThan => Object::Value(Value::Boolean { value: left_value > right_value }),
-                Token::GreaterThanOrEqual => Object::Value(Value::Boolean { value: left_value >= right_value }),
-                Token::Equal => Object::Value(Value::Boolean { value: left_value == right_value }),
-                Token::NotEqual => Object::Value(Value::Boolean { value: left_value != right_value }),
-                _ => unimplemented!("invalid operator for int int infix")
-                // Object::Error(Error::from(
-                //     format!("no implementation for `{}` {} `{}`", ObjectType::Integer, operator.as_literal(), ObjectType::Integer)
-                // )),
+            match infix.operator {
+                Token::Plus => Value::Integer { value: left_value + right_value },
+                Token::Minus => Value::Integer { value: left_value - right_value },
+                Token::Asterisk => Value::Integer { value: left_value * right_value },
+                Token::Slash => Value::Integer { value: left_value / right_value },
+                Token::LessThan => Value::Boolean { value: left_value < right_value },
+                Token::LessThanOrEqual => Value::Boolean { value: left_value <= right_value },
+                Token::GreaterThan => Value::Boolean { value: left_value > right_value },
+                Token::GreaterThanOrEqual => Value::Boolean { value: left_value >= right_value },
+                Token::Equal => Value::Boolean { value: left_value == right_value },
+                Token::NotEqual => Value::Boolean { value: left_value != right_value },
+                _ => panic!("invalid operator for int int infix")
             }
         },
         (
-            Object::Value(Value::Float { value: left_value }), 
-            Object::Value(Value::Float { value: right_value })
+            Value::Float { value: left_value }, 
+            Value::Float { value: right_value }
         ) => {
-            match operator {
-                Token::Plus => Object::Value(Value::Float { value: left_value + right_value }),
-                Token::Minus => Object::Value(Value::Float { value: left_value - right_value }),
-                Token::Asterisk => Object::Value(Value::Float { value: left_value * right_value }),
-                Token::Slash => Object::Value(Value::Float { value: left_value / right_value }),
-                Token::LessThan => Object::Value(Value::Boolean { value: left_value < right_value }),
-                Token::LessThanOrEqual => Object::Value(Value::Boolean { value: left_value <= right_value }),
-                Token::GreaterThan => Object::Value(Value::Boolean { value: left_value > right_value }),
-                Token::GreaterThanOrEqual => Object::Value(Value::Boolean { value: left_value >= right_value }),
-                Token::Equal => Object::Value(Value::Boolean { value: left_value == right_value }),
-                Token::NotEqual => Object::Value(Value::Boolean { value: left_value != right_value }),
-                _ => unimplemented!("invalid operator for float float infix")
-                // Object::Error(Error::from(
-                //     format!("no implementation for `{}` {} `{}`", ObjectType::Integer, operator.as_literal(), ObjectType::Integer)
-                // )),
+            match infix.operator {
+                Token::Plus => Value::Float { value: left_value + right_value },
+                Token::Minus => Value::Float { value: left_value - right_value },
+                Token::Asterisk => Value::Float { value: left_value * right_value },
+                Token::Slash => Value::Float { value: left_value / right_value },
+                Token::LessThan => Value::Boolean { value: left_value < right_value },
+                Token::GreaterThan => Value::Boolean { value: left_value > right_value },
+                _ => panic!("invalid operator for float float infix")
             }
         },
         (
-            Object::Value(Value::String { value: left }), 
-            Object::Value(Value::String { value: right })
+            Value::String { value: left },
+            Value::String { value: right }
         ) => {
-            match operator {
-                Token::Plus => Object::Value(Value::String { value: format!("{}{}", left, right)}),
-                Token::Equal => Object::Value(Value::Boolean { value: left == right }),
-                Token::NotEqual => Object::Value(Value::Boolean { value: left != right }),
-                _ => unimplemented!("invalid operator for string string infix")
-                // Object::Error(Error::from(
-                //     format!("no implementation for `{}` {} `{}`", ObjectType::Integer, operator.as_literal(), ObjectType::Integer)
-                // )),
+            match infix.operator {
+                Token::Plus => Value::String { value: format!("{}{}", left, right)},
+                Token::Equal => Value::Boolean { value: left == right },
+                Token::NotEqual => Value::Boolean { value: left != right },
+                _ => panic!("invalid operator for string string infix")
             }
         }
         (
-            Object::Value(Value::Boolean { value: left_value }), 
-            Object::Value(Value::Boolean { value: right_value })
+            Value::Boolean { value: left_value }, 
+            Value::Boolean { value: right_value }
         ) => {
-            match operator {
-                Token::Equal => Object::Value(Value::Boolean { value: left_value == right_value }),
-                Token::NotEqual => Object::Value(Value::Boolean { value: left_value != right_value }),
-                _ => unimplemented!("invalid operator for boolean boolean infix")
-                // Object::Error(Error::from(
-                //     format!("no implementation for `{}` {} `{}`", ObjectType::Integer, operator.as_literal(), ObjectType::Integer)
-                // )),
+            match infix.operator {
+                Token::Equal => Value::Boolean { value: left_value == right_value },
+                Token::NotEqual => Value::Boolean { value: left_value != right_value },
+                _ => panic!("invalid operator for boolean boolean infix")
             }
         }
         (left, right) => {
-            match operator {
+            match infix.operator {
                 Token::Plus => {
-                    Object::Error {
-                        message: format!("cannot add `{:?}` to `{:?}`", left._type(), right._type())
-                    }
+                    panic!("cannot add `{:?}` to `{:?}`", left._type(), right._type())
                 },
                 Token::Minus => {
-                    Object::Error {
-                        message: format!("cannot subtract `{:?}` from `{:?}`", left._type(), right._type())
-                    }
+                    panic!("cannot subtract `{:?}` from `{:?}`", left._type(), right._type())
                 },
                 Token::Asterisk => {
-                    Object::Error {
-                        message: format!("cannot multiply `{:?}` by `{:?}`", left._type(), right._type())
-                    }
+                    panic!("cannot multiply `{:?}` by `{:?}`", left._type(), right._type())
                 },
                 Token::Slash => {
-                    Object::Error {
-                        message: format!("cannot divide `{:?}` by `{:?}`", left._type(), right._type())
-                    }
+                    panic!("cannot divide `{:?}` by `{:?}`", left._type(), right._type())
                 },
-                Token::LessThan | 
-                Token::GreaterThan | 
-                Token::Equal | 
-                Token::NotEqual | 
-                Token::LessThanOrEqual |
-                Token::GreaterThanOrEqual => {
-                    Object::Error {
-                        message: format!("mismatched types, expected `{:?}`, found `{:?}`", left._type(), right._type())
-                    }
+                Token::LessThan
+                | Token::GreaterThan
+                | Token::Equal
+                | Token::NotEqual
+                | Token::LessThanOrEqual
+                | Token::GreaterThanOrEqual => {
+                    panic!("mismatched types, expected `{:?}`, found `{:?}`", left._type(), right._type())
                 },
-                _ => Object::Error {
-                    message: format!("expected operator, got `{}`", operator.as_literal())
-                },
+                _ => panic!("expected operator, got `{}`", infix.operator.as_literal())
             }
         }
     }
-}
-
-fn eval_block(nested: crate::ast::Nested, env: Rc<RefCell<Environment>>) -> Object {
-    let mut object = NULL;
-
-    for operator in nested.operators {
-        todo!();
-        // object = eval_expression(expression, env.clone());
-    }
-
-    object
-}
-
-fn eval_program(program: crate::ast::Program, env: Rc<RefCell<Environment>>) -> Object {
-    let mut object = NULL;
-
-    for statement in program.statements {
-        object = eval_statement(statement, env.clone());
-    }
-
-    object
-}
-
-fn eval_declaration(declaration: crate::ast::Declaration, env: Rc<RefCell<Environment>>) -> Object {
-    for idents in declaration.identifiers {
-        for name in idents.names {
-            env.borrow_mut().declare(
-                name.value, 
-                idents.names_type.clone().into()
-            );
-        }
-    }
-
-    NULL
-}
-
-fn eval_assign() -> Object {
-    todo!();
-
-    NULL
 }

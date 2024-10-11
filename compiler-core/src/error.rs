@@ -70,67 +70,116 @@ impl Error {
                     }),
                 }]
             },
-            Error::Type { path, src, errors } => errors
-                .iter()
-                .map(|error| {
-                    match error {
-                        AnalyzerError::InvalidUnaryOperation { location } => {
-                            let text = format!("Invalid unary operation");
+            Error::Type { path, src, errors } => {
+                let mut diagnostics = vec![];
 
-                            Diagnostic {
-                                title: "Type mismatch".into(),
-                                text,
-                                level: Level::Error,
-                                location: Some(Location {
-                                    label: Label {
-                                        text: None,
-                                        span: *location,
-                                    },
-                                    path: path.clone(),
-                                    src: src.clone(),
-                                }),
-                            }
-                        },
-                        AnalyzerError::TypeMismatch { 
-                            location, 
-                            expected, 
-                            got 
-                        } => {
-                            let text = format!("Expected `{expected:?}`, but got `{got:?}`");
+                errors
+                    .iter()
+                    .for_each(|error| {
+                        match error {
+                            AnalyzerError::InvalidUnaryOperation { location } => {
+                                let text = format!("Invalid unary operation");
 
-                            Diagnostic {
-                                title: "Type mismatch".into(),
-                                text,
-                                level: Level::Error,
-                                location: Some(Location {
-                                    label: Label {
-                                        text: None,
-                                        span: *location,
-                                    },
-                                    path: path.clone(),
-                                    src: src.clone(),
-                                }),
-                            }
-                        },
-                        AnalyzerError::VariableNotDeclared { location, variable } => {
-                            let text = format!("Variable `{variable}` is not declared.");
+                                diagnostics.push(Diagnostic {
+                                    title: "Type mismatch".into(),
+                                    text,
+                                    level: Level::Error,
+                                    location: Some(Location {
+                                        label: Label {
+                                            text: None,
+                                            span: *location,
+                                        },
+                                        path: path.clone(),
+                                        src: src.clone(),
+                                    }),
+                                })
+                            },
+                            AnalyzerError::TypeMismatch { 
+                                location, 
+                                expected, 
+                                got 
+                            } => {
+                                let text = format!("Expected `{expected:?}`, but got `{got:?}`");
 
-                            Diagnostic {
-                                title: "Variable not declared".into(),
-                                text,
-                                level: Level::Error,
-                                location: Some(Location {
-                                    label: Label {
-                                        text: None,
-                                        span: *location,
-                                    },
-                                    path: path.clone(),
-                                    src: src.clone()
-                                }),
+                                diagnostics.push(Diagnostic {
+                                    title: "Type mismatch".into(),
+                                    text,
+                                    level: Level::Error,
+                                    location: Some(Location {
+                                        label: Label {
+                                            text: None,
+                                            span: *location,
+                                        },
+                                        path: path.clone(),
+                                        src: src.clone(),
+                                    }),
+                                })
+                            },
+                            AnalyzerError::VariableNotDeclared { location, variable } => {
+                                let text = format!("Variable `{variable}` is not declared.");
+
+                                diagnostics.push(Diagnostic {
+                                    title: "Variable not declared".into(),
+                                    text,
+                                    level: Level::Error,
+                                    location: Some(Location {
+                                        label: Label {
+                                            text: None,
+                                            span: *location,
+                                        },
+                                        path: path.clone(),
+                                        src: src.clone()
+                                    }),
+                                })
+                            },
+                            AnalyzerError::OperatorMismatch { 
+                                location_a, 
+                                location_b, 
+                                expected, 
+                                got_a, 
+                                got_b 
+                            } => {
+                                let expected_types = expected.iter()
+                                    .map(|type_| format!("{type_:?}"))
+                                    .collect::<Vec<String>>()
+                                    .join("`, `");
+
+                                let text_a = format!("Expected any of `{expected_types}`, but got `{got_a:?}`");
+                                let text_b = format!("Expected any of `{expected_types}`, but got `{got_b:?}`");
+
+                                diagnostics.push(Diagnostic {
+                                    title: "Type mismatch".into(),
+                                    text: text_a,
+                                    level: Level::Error,
+                                    location: Some(Location {
+                                        label: Label {
+                                            text: None,
+                                            span: *location_a,
+                                        },
+                                        path: path.clone(),
+                                        src: src.clone()
+                                    }),
+                                });
+                                    
+                                diagnostics.push(Diagnostic {
+                                    title: "Type mismatch".into(),
+                                    text: text_b,
+                                    level: Level::Error,
+                                    location: Some(Location {
+                                        label: Label {
+                                            text: None,
+                                            span: *location_b,
+                                        },
+                                        path: path.clone(),
+                                        src: src.clone()
+                                    }),
+                                });
                             }
-                        }
-                    }
-                }).collect::<Vec<Diagnostic>>(),
+                        };
+                    });
+
+                diagnostics
+            },
             Error::StdIo { err, } => {
                 vec![Diagnostic {
                     title: "Standard IO error".into(),

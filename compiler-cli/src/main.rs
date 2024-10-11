@@ -2,11 +2,11 @@ mod cli;
 mod rlpl;
 mod rppl;
 
-use std::{path::PathBuf, rc::Rc};
+use std::{cell::RefCell, path::PathBuf, rc::Rc};
 
 use clap::Parser;
-use cli::{print_compiled, print_compiling};
-use lang_core::{build::compile, warning::{Warning, WarningEmitterIO}};
+use cli::{print_analyzed, print_analyzing};
+use lang_core::{build::compile, environment::Environment, eval::eval, warning::{Warning, WarningEmitterIO}};
 
 #[derive(Parser)]
 enum Command {
@@ -28,11 +28,13 @@ fn main() {
             let buf_writer = crate::cli::stderr_buffer_writer();
             let mut buf = buf_writer.buffer();
 
-            print_compiling(path.to_str().unwrap());
+            print_analyzing(path.to_str().unwrap());
             let start = std::time::Instant::now();
 
             match compile(path, warning_emitter.clone()) {
-                Ok(_) => {},
+                Ok(module) => {
+                    println!("{}", module.program);
+                },
                 Err(err) => {
                     err.pretty(&mut buf);
                     buf_writer
@@ -41,11 +43,37 @@ fn main() {
                 }
             };
 
-            print_compiled(std::time::Instant::now() - start);
+            print_analyzed(std::time::Instant::now() - start);
         },
         Command::Run {
-            path: _path
-        } => todo!("lexer -> parser -> analyzer -> eval"),
+            path
+        } => {
+            let warning_emitter = Rc::new(ConsoleWarningEmitter);
+
+            let buf_writer = crate::cli::stderr_buffer_writer();
+            let mut buf = buf_writer.buffer();
+
+            print_analyzing(path.to_str().unwrap());
+            let start = std::time::Instant::now();
+
+            match compile(path, warning_emitter.clone()) {
+                Ok(module) => {
+                    print_analyzed(std::time::Instant::now() - start);
+
+                    let env = Rc::new(RefCell::new(Environment::new()));
+
+                    eval(module, env);
+                },
+                Err(err) => {
+                    err.pretty(&mut buf);
+                    buf_writer
+                        .print(&buf)
+                        .expect("Writing warning to stderr");
+
+                    print_analyzed(std::time::Instant::now() - start);
+                }
+            };
+        },
         Command::Rlpl => {
             let _  = rlpl::start();
         },

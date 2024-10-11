@@ -3,9 +3,7 @@ begin
 
     a := 5;
 
-    c := 5.0;
-    d := 5;
-    
+    var b: !;;
 
-    if (true) writeln a else writeln b
+    writeln "Hello, world!"
 end

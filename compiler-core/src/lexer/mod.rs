@@ -89,8 +89,6 @@ impl Lexer {
 		self.skip_whitespace();
 
 		let span = match self.ch {
-			b'{' => self.eat_one_char(Token::LBrace),
-			b'}' => self.eat_one_char(Token::RBrace),
 			b'(' => {
 				if self.peek() == b'*' {
 					self.lex_comment()

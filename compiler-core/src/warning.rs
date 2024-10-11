@@ -157,6 +157,21 @@ impl Warning {
                 src,
                 warning
             } => match warning {
+                AnalyzerWarning::UnreachableIfClause { location } => {
+                    Diagnostic {
+                        title: "Unreachable if clause".into(),
+                        text: "".into(),
+                        level: Level::Warning,
+                        location: Some(Location {
+                            path: path.to_path_buf(),
+                            src: src.clone(),
+                            label: Label {
+                                text: None,
+                                span: *location,
+                            },
+                        }),
+                    }
+                },
                 AnalyzerWarning::UnreachableElseClause { location } => {
                     Diagnostic {
                         title: "Unreachable else clause".into(),
@@ -166,7 +181,7 @@ impl Warning {
                             path: path.to_path_buf(),
                             src: src.clone(),
                             label: Label {
-                                text: Some("This value is never used".into()),
+                                text: None,
                                 span: *location,
                             },
                         }),
@@ -183,6 +198,36 @@ impl Warning {
                             src: src.clone(),
                             label: Label {
                                 text: Some("This value is never used".into()),
+                                span: *location,
+                            },
+                        }),
+                    }
+                },
+                AnalyzerWarning::InfiniteLoop { location } => {
+                    Diagnostic {
+                        title: "Infinite loop".into(),
+                        text: "".into(),
+                        level: Level::Warning,
+                        location: Some(Location {
+                            path: path.to_path_buf(),
+                            src: src.clone(),
+                            label: Label {
+                                text: None,
+                                span: *location,
+                            },
+                        }),
+                    }
+                },
+                AnalyzerWarning::UnreachableWhileClause { location } => {
+                    Diagnostic {
+                        title: "Unreachable while clause".into(),
+                        text: "".into(),
+                        level: Level::Warning,
+                        location: Some(Location {
+                            path: path.to_path_buf(),
+                            src: src.clone(),
+                            label: Label {
+                                text: None,
                                 span: *location,
                             },
                         }),

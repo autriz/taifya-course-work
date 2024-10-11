@@ -11,8 +11,7 @@ pub struct Parsed {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Module {
     pub name: String,
-    pub program: Program,
-    pub identifiers: Vec<Identifier>,
+    pub program: Program
 }
 
 // program -> begin <statement> {; <statement> } end

@@ -10,4 +10,4 @@ pub mod error;
 pub mod warning;
 pub mod diagnostic;
 pub mod build;
-// pub mod eval;
+pub mod eval;

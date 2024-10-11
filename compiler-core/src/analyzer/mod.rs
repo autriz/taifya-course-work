@@ -1,15 +1,12 @@
 pub mod error;
 
-use error::{Error, Problems};
+use error::{Error, Problems, Warning};
 
 #[cfg(test)]
 mod tests;
 
 use crate::{
-    ast::{Expression, Identifier, Infix, Module, Operator, Prefix, Primitive, Statement}, 
-    environment::Environment,
-    object::ValueType, 
-    token::Token, warning::TypeWarningEmitter
+    ast::{Expression, Identifier, Infix, Module, Operator, Prefix, Primitive, Statement}, environment::Environment, lexer::SrcSpan, object::ValueType, token::Token, warning::TypeWarningEmitter
 };
 
 pub enum Outcome<T, E> {
@@ -25,9 +22,7 @@ pub struct ModuleAnalyzer {
 impl ModuleAnalyzer {
     pub fn analyze(
         module: Module, 
-        warnings: &TypeWarningEmitter,
-        // line_numbers: LineNumbers, 
-        // src_path: PathBuf
+        warnings: &TypeWarningEmitter
     ) -> Outcome<Module, Vec<Error>> {
         let mut analyzer = ModuleAnalyzer {
             problems: Default::default()
@@ -41,9 +36,9 @@ impl ModuleAnalyzer {
             analyzer.analyze_statement(statement, &mut env);
         }
 
-        analyzer.problems.sort();
-
         env.convert_unused_to_warnings(&mut analyzer.problems);
+        
+        analyzer.problems.sort();
 
         let warning_list = analyzer.problems.take_warnings();
         for warning in &warning_list {
@@ -127,10 +122,24 @@ impl ModuleAnalyzer {
                     });
                 }
 
-                self.analyze_operator(*conditional.resolution, env);
+                self.analyze_operator(*conditional.resolution.clone(), env);
 
-                if let Some(alternative) = conditional.alternative {
+                if let Some(alternative) = conditional.alternative.clone() {
                     self.analyze_operator(*alternative, env);
+                }
+
+                match conditional.condition {
+                    Expression::Primitive(Primitive::Bool { value, .. }) => match value {
+                        true => { 
+                            if let Some(alternative) = conditional.alternative {
+                                self.problems.warning(Warning::UnreachableElseClause { location: alternative.location() }); 
+                            }
+                        },
+                        false => {
+                            self.problems.warning(Warning::UnreachableIfClause { location: conditional.resolution.location() })
+                        }
+                    },
+                    _ => {}
                 }
             },
             Operator::ConditionalLoop(loop_) => {
@@ -150,7 +159,22 @@ impl ModuleAnalyzer {
                     });
                 }
 
-                self.analyze_operator(*loop_.block, env);
+                self.analyze_operator(*loop_.block.clone(), env);
+
+                match loop_.condition {
+                    Expression::Primitive(Primitive::Bool { value, .. }) => match value {
+                        true => { 
+                            let start = loop_.location.start;
+                            let end = loop_.condition.location().end + 1;
+
+                            self.problems.warning(Warning::InfiniteLoop {  location: SrcSpan { start, end } }); 
+                        },
+                        false => {
+                            self.problems.warning(Warning::UnreachableWhileClause { location: loop_.block.location() });
+                        }
+                    },
+                    _ => {}
+                }
             },
             Operator::FixedLoop(loop_) => {
                 let assignment = loop_.assignment;
@@ -291,24 +315,36 @@ fn get_infix_type(
     infix: Infix, 
     env: &mut Environment
 ) -> Result<ValueType, Error> {
-    let left_type = get_expression_type(*infix.left, env)?;
+    let left_type = get_expression_type(*infix.left.clone(), env)?;
     let right_type = get_expression_type(*infix.right.clone(), env)?;
 
-    if left_type == right_type {
-        Ok(left_type)
-    } else {
-        Err(Error::TypeMismatch {
-            location: infix.right.location(),
-            expected: left_type,
-            got: right_type
-        })
-    }
+    let allowed_types = get_allowed_types_for(infix.operator);
 
-    // check for invalid combinations
-    // 1 + true
-    // 1.5 * "hi"
-    // 1.5 - 1
-    // etc.
+    let is_left_allowed = allowed_types.contains(&left_type);
+    let is_right_allowed = allowed_types.contains(&right_type);
+
+    let value_type = match (is_left_allowed, is_right_allowed) {
+        (true, true) => match (&left_type, &right_type) {
+            (ValueType::Integer, ValueType::Integer)
+            | (ValueType::Float, ValueType::Float)
+            | (ValueType::Boolean, ValueType::Boolean)
+            | (ValueType::String, ValueType::String) => left_type, 
+            _ => return Err(Error::TypeMismatch { 
+                location: infix.right.location(), 
+                expected: left_type, 
+                got: right_type 
+            })
+        },
+        _ => return Err(Error::OperatorMismatch { 
+            location_a: infix.left.location(), 
+            location_b: infix.right.location(), 
+            expected: allowed_types, 
+            got_a: left_type, 
+            got_b: right_type 
+        })
+    };
+
+    Ok(value_type)
 }
 
 fn get_prefix_type(
@@ -320,5 +356,27 @@ fn get_prefix_type(
     match (prefix.operator, &expression_type) {
         (Token::Bang, ValueType::Boolean) => Ok(expression_type),
         _ => Err(Error::InvalidUnaryOperation { location: prefix.location })
+    }
+}
+
+fn get_allowed_types_for(operator: Token) -> Vec<ValueType> {
+    if !operator.is_operator() {
+        return vec![];
+    }
+
+    match operator {
+        Token::Plus => vec![ValueType::Integer, ValueType::Float, ValueType::String],
+        Token::Minus
+        | Token::Asterisk
+        | Token::Slash => vec![ValueType::Integer, ValueType::Float],
+        Token::And
+        | Token::Or => vec![ValueType::Boolean],
+        Token::LessThan
+        | Token::GreaterThan => vec![ValueType::Integer, ValueType::Float],
+        Token::LessThanOrEqual
+        | Token::GreaterThanOrEqual => vec![ValueType::Integer],
+        Token::Equal
+        | Token::NotEqual => vec![ValueType::Integer, ValueType::Boolean, ValueType::String],
+        _ => unreachable!("This should not match")
     }
 }

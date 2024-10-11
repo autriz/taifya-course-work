@@ -47,14 +47,22 @@ pub enum Error {
     InvalidUnaryOperation {
         location: SrcSpan
     },
+    OperatorMismatch {
+        location_a: SrcSpan,
+        location_b: SrcSpan,
+        expected: Vec<ValueType>,
+        got_a: ValueType,
+        got_b: ValueType
+    }
 }
 
 impl Error {
     pub fn start_location(&self) -> u32 {
         match self {
-            Error::TypeMismatch { location, .. } |
-            Error::VariableNotDeclared { location, .. } |
-            Error::InvalidUnaryOperation { location } => location.start
+            Error::TypeMismatch { location, .. }
+            | Error::VariableNotDeclared { location, .. }
+            | Error::InvalidUnaryOperation { location }
+            | Error::OperatorMismatch { location_a: location, .. } => location.start
         }
     }
 }
@@ -64,7 +72,16 @@ pub enum Warning {
     UnusedVariable {
         location: SrcSpan
     },
+    UnreachableIfClause {
+        location: SrcSpan
+    },
     UnreachableElseClause {
+        location: SrcSpan
+    },
+    InfiniteLoop {
+        location: SrcSpan
+    },
+    UnreachableWhileClause {
         location: SrcSpan
     }
 }
@@ -72,8 +89,11 @@ pub enum Warning {
 impl Warning {
     pub fn location(&self) -> SrcSpan {
         match self {
-            Warning::UnusedVariable { location, .. } |
-            Warning::UnreachableElseClause { location } => *location
+            Warning::UnusedVariable { location, .. }
+            | Warning::UnreachableIfClause { location }
+            | Warning::UnreachableElseClause { location }
+            | Warning::InfiniteLoop { location }
+            | Warning::UnreachableWhileClause { location } => *location
         }
     }
 }

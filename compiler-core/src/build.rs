@@ -1,11 +1,11 @@
 use std::{path::PathBuf, rc::Rc};
 
-use crate::{analyzer::{ModuleAnalyzer, Outcome}, error::Error, parser::parse_module, warning::{TypeWarningEmitter, WarningEmitter, WarningEmitterIO}};
+use crate::{analyzer::{ModuleAnalyzer, Outcome}, ast::Module, error::Error, parser::parse_module, warning::{TypeWarningEmitter, WarningEmitter, WarningEmitterIO}};
 
 pub fn compile(
     path: PathBuf,
     warnings: Rc<dyn WarningEmitterIO>,
-) -> Result<(), Error> {
+) -> Result<Module, Error> {
     let warnings = WarningEmitter::new(warnings);
 
     let src = match std::fs::read_to_string(path.clone()) {
@@ -33,9 +33,8 @@ pub fn compile(
     let outcome = ModuleAnalyzer::analyze(parsed.module, &warnings);
 
     match outcome {
-        Outcome::Ok(_) => {
-            println!("analyzed successfuly!");
-            Ok(())
+        Outcome::Ok(module) => {
+            Ok(module)
         },
         Outcome::PartialFailure(_, errors) => {
             let error = Error::Type { path, src: src.to_string(), errors };

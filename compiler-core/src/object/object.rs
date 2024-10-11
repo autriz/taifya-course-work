@@ -1,8 +1,9 @@
-use crate::ast::{Expression, Identifier, IdentifierType};
+use std::fmt::Display;
 
-pub const TRUE: Object = Object::Value(Value::Boolean { value: true });
-pub const FALSE: Object = Object::Value(Value::Boolean { value: false });
-pub const NULL: Object = Object::Null;
+use crate::ast::IdentifierType;
+
+pub const TRUE: Value = Value::Boolean { value: true };
+pub const FALSE: Value = Value::Boolean { value: false };
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
@@ -18,6 +19,17 @@ pub enum Value {
     Boolean {
         value: bool
     },
+}
+
+impl Display for Value {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Value::Integer { value } => write!(f, "{value}"),
+            Value::Float { value } => write!(f, "{value}"),
+            Value::String { value } => write!(f, "{value}"),
+            Value::Boolean { value } => write!(f, "{value}")
+        }
+    }
 }
 
 impl Value {
@@ -48,46 +60,5 @@ impl From<IdentifierType> for ValueType {
             IdentifierType::Bool => ValueType::Boolean
         }
     }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum Object {
-    Value(Value),
-    Function {
-        function: FunctionType,
-    },
-    Error {
-        message: String,
-    },
-    Null
-}
-
-impl Object {
-    pub fn _type(&self) -> ObjectType {
-        match self {
-            Self::Value(value) => ObjectType::Value(value._type()),
-            Self::Function { .. } => ObjectType::Function,
-            Self::Error { .. } => ObjectType::Error,
-            Self::Null => ObjectType::Null
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum ObjectType {
-    Value(ValueType),
-    Function,
-    Error,
-    Null
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum FunctionType {
-    Writeln {
-        params: Vec<Expression>,
-    },
-    Readln {
-        params: Vec<Identifier>
-    },
 }
 

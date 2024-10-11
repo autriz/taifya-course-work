@@ -14,7 +14,7 @@ pub enum Token {
     // где <порядок>::= (E|e)[+|-]<числовая_строка>
     Float(String), 
     // этого нету в задании, но пусть будет :)
-    // <строка>::= '"'{/ <буква> /}'"'
+    // <строка>::= '"'{ <буква> }'"'
     String(String),
     // (* multiline comment *)
     Comment,
@@ -37,14 +37,18 @@ pub enum Token {
     Slash, // /
     And, // &&
 
-    // Унарная операция
+    // Унарная операция (а так же тип данных)
     Bang, // !
 
+    // Операция присваивания
     Assign, // :=
+
+    // Типы данных
     Percent, // %
     At, // @
     Dollar, // $
 
+    // Ключевые слова
     Var, // var
     Begin, // begin
     End, // end
@@ -60,14 +64,14 @@ pub enum Token {
     Readln, // readln
     Writeln, // writeln
 
+    // Прочие разделители
     Comma, // ,
     Colon, // :
     Semicolon, // ;
     LParen, // (
     RParen, // )
-    LBrace, // {
-    RBrace, // }
 
+    // Логические константы
     True,
     False,
 
@@ -187,8 +191,6 @@ impl Token {
             Token::Semicolon => ";".to_string(),
             Token::LParen => "(".to_string(),
             Token::RParen => ")".to_string(),
-            Token::LBrace => "{".to_string(),
-            Token::RBrace => "}".to_string(),
             Token::True => "true".to_string(),
             Token::False => "false".to_string(),
             Token::Eof => "EOF".to_string()

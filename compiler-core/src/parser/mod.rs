@@ -115,8 +115,7 @@ impl Parser {
 
         let module = Module {
             name: "".into(),
-            program: program?,
-            identifiers: vec![],
+            program: program?
         };
 
         Ok(Parsed {
