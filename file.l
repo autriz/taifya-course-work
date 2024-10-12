@@ -8,19 +8,19 @@ begin
     a := 5o;
 
     (* Цикл for *)
-    for c := 1 to 10 step 2 writeln "got", c next
+    for c := 1 to 10 step 2 writeln "got", c next;
 
     (* Цикл while *)
-    while (c < 20) c := c + 1
+    while (c < 20) c := c + 1;
 
     (* Вывод в консоль *)
-    writeln "after while: ", c
+    writeln "after while: ", c;
 
     (* Ввод данных из консоли *)
     readln d;
 
     (* Условная операция *)
-    if (d == 42) 
+    if ((d == 42) || (c == 20)) 
         b := 10h
     (* Вложенный блок *)
     else begin 
