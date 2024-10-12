@@ -4,7 +4,6 @@ use crate::{lexer::{LexicalError, SrcSpan}, token::Token};
 pub enum ParseErrorType {
     ExpectedIdent,
     ExpectedOperator,
-    // UnexpectedReservedWord,
     UnexpectedSemicolonBeforeEnd,
     UnexpectedEof,
     UnexpectedToken {
@@ -13,6 +12,7 @@ pub enum ParseErrorType {
     },
     ExpectedType,
     ExpectedValue,
+    MissingSemicolon,
     LexError { error: LexicalError },
 }
 
@@ -55,6 +55,7 @@ impl ParseError {
                 ("Not expected this", messages)
             },
             ParseErrorType::UnexpectedEof => ("Unexpected end of file", vec![]),
+            ParseErrorType::MissingSemicolon => ("Missing semicolon", vec![]),
             ParseErrorType::LexError { error } => error.details()
         }
     }
