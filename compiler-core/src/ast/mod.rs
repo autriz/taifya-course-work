@@ -42,16 +42,25 @@ impl Parse for Program {
 
                 match (&parser.current_token, &parser.next_token) {
                     (
-                        Some((_, Token::Semicolon, _)), 
+                        Some((start, Token::Semicolon, end)), 
                         Some((_, Token::End, _))
-                    ) => todo!("parse err SemicolonBeforeEnd"),
+                    ) => return parse_error(
+                        ParseErrorType::UnexpectedSemicolonBeforeEnd, 
+                        SrcSpan { start: *start, end: *end }
+                    ),
                     (Some((_, Token::Semicolon, _)), _) => parser.step(),
                     (Some((_, Token::End, _)), _) => {
                         end = parser.next_token().unwrap().2;
                         break 
                     },
-                    (None, _) => todo!("parse err Unexpected EOF"),
-                    _ => continue,
+                    (None, _) => return parse_error(
+                        ParseErrorType::UnexpectedEof, 
+                        SrcSpan { start: 0, end: 0 }
+                    ),
+                    (Some((start, _, _)), _) => return parse_error(
+                        ParseErrorType::MissingSemicolon,
+                        SrcSpan { start: *start - 1, end: *start }
+                    ),
                 }
             } else {
                 end = _end;
@@ -315,7 +324,7 @@ impl Parse for Nested {
                         Some((start, Token::Semicolon, end)), 
                         Some((_, Token::End, _))
                     ) => return parse_error(
-                        ParseErrorType::UnexpectedSemicolonBeforeEnd,
+                        ParseErrorType::UnexpectedSemicolonBeforeEnd, 
                         SrcSpan { start: *start, end: *end }
                     ),
                     (Some((_, Token::Semicolon, _)), _) => parser.step(),
@@ -327,7 +336,10 @@ impl Parse for Nested {
                         ParseErrorType::UnexpectedEof, 
                         SrcSpan { start: 0, end: 0 }
                     ),
-                    _ => continue,
+                    (Some((start, _, _)), _) => return parse_error(
+                        ParseErrorType::MissingSemicolon,
+                        SrcSpan { start: *start - 1, end: *start }
+                    ),
                 }
             } else {
                 end = _end;
