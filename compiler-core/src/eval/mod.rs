@@ -20,9 +20,11 @@ fn eval_statement(statement: crate::ast::Statement, env: Rc<RefCell<Environment>
         Statement::Declaration(declaration) => {
             for identifiers in declaration.identifiers {
                 for name in identifiers.names {
-                    match env.borrow().get(&name.value) {
+                    let mut env = env.borrow_mut();
+
+                    match env.get(&name.value) {
                         None => {
-                            env.borrow_mut().declare(
+                            env.declare(
                                 name.value.clone(), 
                                 identifiers.names_type.to_owned().into()
                             );
@@ -261,6 +263,8 @@ fn eval_infix(
             match infix.operator {
                 Token::Equal => Value::Boolean { value: left_value == right_value },
                 Token::NotEqual => Value::Boolean { value: left_value != right_value },
+                Token::And => Value::Boolean { value: left_value && right_value },
+                Token::Or => Value::Boolean { value: left_value || right_value },
                 _ => panic!("invalid operator for boolean boolean infix")
             }
         }
