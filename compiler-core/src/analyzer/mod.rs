@@ -6,7 +6,7 @@ use error::{Error, Problems, Warning};
 mod tests;
 
 use crate::{
-    ast::{Expression, Identifier, Infix, Module, Operator, Prefix, Primitive, Statement}, environment::Environment, lexer::SrcSpan, object::ValueType, token::Token, warning::TypeWarningEmitter
+    ast::{Expression, Identifier, Infix, Module, Operator, Prefix, Primitive, Statement}, environment::Environment, lexer::SrcSpan, value::ValueType, token::Token, warning::TypeWarningEmitter
 };
 
 pub enum Outcome<T, E> {

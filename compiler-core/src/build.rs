@@ -19,6 +19,7 @@ pub fn compile(
     let parsed = match parse_module(&src) {
         Ok(parsed) => parsed,
         Err(err) => {
+            println!("{err:?}");
             let error = Error::Parse { path, src: src.to_string(), error: err };
             return Err(error)
         }
@@ -37,6 +38,7 @@ pub fn compile(
             Ok(module)
         },
         Outcome::PartialFailure(_, errors) => {
+            println!("{errors:?}");
             let error = Error::Type { path, src: src.to_string(), errors };
             Err(error)
         }

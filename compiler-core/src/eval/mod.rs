@@ -4,7 +4,7 @@ mod tests;
 use std::{cell::RefCell, rc::Rc};
 
 use crate::{
-    ast::{Expression, Operator, Primitive, Statement}, environment::Environment, object::{
+    ast::{Expression, Operator, Primitive, Statement}, environment::Environment, value::{
         Value, ValueType, FALSE, TRUE
     }, token::Token
 };

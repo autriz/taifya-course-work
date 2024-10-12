@@ -105,11 +105,14 @@ impl Parser {
         let program = Program::parse(self, None);
 
         if self.lex_errors.len() > 0 {
+            let location = self.lex_errors[0].location;
+            println!("{:?}", location);
+
             return parse_error(
                 ParseErrorType::LexError { 
                     error: self.lex_errors[0].clone()
                 }, 
-                SrcSpan { start: 0, end: 0 }
+                SrcSpan { start: location.start, end: location.end }
             );
         }
 

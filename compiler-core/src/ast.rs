@@ -217,7 +217,11 @@ impl Display for Declaration {
             .map(|idents| idents.to_string())
             .collect::<Vec<String>>();
 
-        write!(f, "var {};", identifiers.join("; "))
+        if identifiers.len() > 0 {
+            write!(f, "var {};", identifiers.join("; "))
+        } else {
+            write!(f, "var")
+        }
     }
 }
 

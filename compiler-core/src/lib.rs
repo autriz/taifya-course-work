@@ -3,7 +3,7 @@ pub mod lexer;
 pub mod ast;
 pub mod parser;
 pub mod analyzer;
-pub mod object;
+pub mod value;
 pub mod environment;
 pub mod error;
 pub mod warning;

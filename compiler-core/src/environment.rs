@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{analyzer::error::{Problems, Warning}, lexer::SrcSpan, object::{Value, ValueType}};
+use crate::{analyzer::error::{Problems, Warning}, lexer::SrcSpan, value::{Value, ValueType}};
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct Environment {

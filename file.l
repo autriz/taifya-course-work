@@ -4,8 +4,10 @@ begin
     var a, b, c, d: %;
         e: !;;
 
+    var;
+
     (* Использование восьмеричного числа *)
-    a := 5o;
+    a := 5o + 10 * 12h / 0101b;
 
     (* Цикл for *)
     for c := 1 to 10 step 2 writeln "got", c next;

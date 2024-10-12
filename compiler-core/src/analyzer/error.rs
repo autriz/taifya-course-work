@@ -1,4 +1,4 @@
-use crate::{lexer::SrcSpan, object::ValueType};
+use crate::{lexer::SrcSpan, value::ValueType};
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Problems {
