@@ -173,6 +173,22 @@ impl Warning {
                         }),
                     }
                 },
+                AnalyzerWarning::EmptyDeclaration { location } => {
+                    Diagnostic {
+                        title: "Empty declaration".into(),
+                        text: "".into(),
+                        level: Level::Warning,
+                        location: Some(Location {
+                            src: src.clone(),
+                            path: path.to_path_buf(),
+                            label: Label {
+                                text: None,
+                                span: *location,
+                            },
+                            extra_labels: vec![]
+                        }),
+                    }
+                }
                 AnalyzerWarning::UnreachableElseClause { location } => {
                     Diagnostic {
                         title: "Unreachable else clause".into(),

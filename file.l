@@ -1,7 +1,7 @@
 (* Начало программы *)
 begin
     (* Объявление переменных *)
-    var a, b, c, d: %;
+    var a, b, c, d, f: %;
         e: !;;
 
     var;
@@ -10,10 +10,10 @@ begin
     a := 5o + 10 * 12h / 0101b;
 
     (* Цикл for *)
-    for c := 1 to 10 step 2 writeln "got", c next;
+    for c := 1 to 10 step 2 writeln "got ", c next;
 
     (* Цикл while *)
-    while (c < 20) c := c + 1;
+    while (c < 20) c := c + 10o;
 
     (* Вывод в консоль *)
     writeln "after while: ", c;

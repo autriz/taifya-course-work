@@ -136,6 +136,24 @@ impl Error {
                                     }),
                                 })
                             },
+                            AnalyzerError::VariableNotInitialized { location, variable } => {
+                                let text = format!("Variable `{variable}` is not initialized.");
+
+                                diagnostics.push(Diagnostic {
+                                    title: "Variable not initialized".into(),
+                                    text,
+                                    level: Level::Error,
+                                    location: Some(Location {
+                                        src: src.clone(),
+                                        path: path.clone(),
+                                        label: Label {
+                                            text: None,
+                                            span: *location,
+                                        },
+                                        extra_labels: vec![]
+                                    }),
+                                })
+                            }
                             AnalyzerError::VariableRedeclaration { 
                                 location_a, 
                                 location_b,

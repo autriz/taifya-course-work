@@ -2,6 +2,10 @@ use std::fmt::Display;
 
 use crate::{lexer::SrcSpan, parser::{parse_error, InfixParse, Parse, ParseErrorType, Precedence}, token::Token};
 
+pub trait Postfix {
+    fn postfix(&self) -> String;
+}
+
 #[derive(Debug)]
 pub struct Parsed {
     pub module: Module,
@@ -86,6 +90,16 @@ impl Display for Program {
     }
 }
 
+impl Postfix for Program {
+    fn postfix(&self) -> String {
+        let statements = self.statements.iter()
+            .map(|statement| statement.postfix())
+            .collect::<Vec<String>>();
+        
+        format!("{} .", statements.join(" "))
+    }
+}
+
 // statement -> (<declaration> | <operator>)
 #[derive(Debug, Clone, PartialEq)]
 pub enum Statement {
@@ -120,6 +134,15 @@ impl Display for Statement {
     }
 }
 
+impl Postfix for Statement {
+    fn postfix(&self) -> String {
+        match self {
+            Self::Declaration(declaration) => declaration.postfix(),
+            Self::Operator(operator) => operator.postfix()
+        }
+    }
+}
+
 // identifiers -> <identifier> {, <identifier> } : <type>
 #[derive(Debug, Clone, PartialEq)]
 pub struct Identifiers {
@@ -134,6 +157,12 @@ impl Display for Identifiers {
             .collect::<Vec<String>>();
 
         write!(f, "{}: {}", names.join(", "), self.names_type)
+    }
+}
+
+impl Postfix for Identifiers {
+    fn postfix(&self) -> String {
+        format!("")
     }
 }
 
@@ -225,6 +254,12 @@ impl Display for Declaration {
     }
 }
 
+impl Postfix for Declaration {
+    fn postfix(&self) -> String {
+        format!("")
+    }
+}
+
 // operator -> <nested> | <assignment> | <conditional> | <fixed_loop> | <conditional_loop> | <input> | <output>
 #[derive(Debug, Clone, PartialEq)]
 pub enum Operator {
@@ -279,6 +314,20 @@ impl Display for Operator {
             Self::ConditionalLoop(loop_) => write!(f, "{loop_}"),
             Self::Input(input) => write!(f, "{input}"),
             Self::Output(output) => write!(f, "{output}")
+        }
+    }
+}
+
+impl Postfix for Operator {
+    fn postfix(&self) -> String {
+        match self {
+            Self::Nested(nested) => nested.postfix(),
+            Self::Assignment(assignment) => assignment.postfix(),
+            Self::Conditional(conditional) => conditional.postfix(),
+            Self::FixedLoop(loop_) => loop_.postfix(),
+            Self::ConditionalLoop(loop_) => loop_.postfix(),
+            Self::Input(input) => input.postfix(),
+            Self::Output(output) => output.postfix()
         }
     }
 }
@@ -369,6 +418,16 @@ impl Display for Nested {
     }
 }
 
+impl Postfix for Nested {
+    fn postfix(&self) -> String {
+        let operators = self.operators.iter()
+            .map(|operator| format!("{}", operator))
+            .collect::<Vec<String>>();
+        
+        format!("{}", operators.join(" "))
+    }
+}
+
 // assignment -> <identifier> := <expression>
 #[derive(Debug, Clone, PartialEq)]
 pub struct Assignment {
@@ -408,6 +467,12 @@ impl Parse for Assignment {
 impl Display for Assignment {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} := {}", self.identifier, self.value)
+    }
+}
+
+impl Postfix for Assignment {
+    fn postfix(&self) -> String {
+        format!("{} {} :=", self.identifier, self.value)
     }
 }
 
@@ -472,6 +537,25 @@ impl Display for Conditional {
     }
 }
 
+impl Postfix for Conditional {
+    fn postfix(&self) -> String {
+        format!("{} {} if {} {}", 
+            self.condition, 
+            self.resolution.location().start,
+            self.resolution,
+            if self.alternative.is_some() {
+                let alt = self.alternative.as_ref().unwrap();
+                format!("{} else {}", 
+                    alt.location().end,
+                    alt
+                )
+            } else {
+                "".to_string()
+            }
+        )
+    }
+}
+
 // fixed_loop -> for <assignment> to <expression> [step <expression>] <operator> next
 #[derive(Debug, Clone, PartialEq)]
 pub struct FixedLoop {
@@ -529,6 +613,13 @@ impl Display for FixedLoop {
     }
 }
 
+impl Postfix for FixedLoop {
+    fn postfix(&self) -> String {
+        todo!()
+        // format!("{} for {} to {} step next {}")
+    }
+}
+
 // conditional_loop -> while "(" <expression> ")" <operator>
 #[derive(Debug, Clone, PartialEq)]
 pub struct ConditionalLoop {
@@ -565,6 +656,12 @@ impl Parse for ConditionalLoop {
 impl Display for ConditionalLoop {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "while ({}) {}", self.condition, self.block)
+    }
+}
+
+impl Postfix for ConditionalLoop {
+    fn postfix(&self) -> String {
+        todo!()
     }
 }
 
@@ -609,6 +706,16 @@ impl Display for Input {
     }
 }
 
+impl Postfix for Input {
+    fn postfix(&self) -> String {
+        let identifiers = self.identifiers.iter()
+            .map(|ident| ident.value.clone())
+            .collect::<Vec<String>>();
+
+        format!("{} readln", identifiers.join(" readln "))
+    }
+}
+
 // output -> writeln <expression> {, <expression> }
 #[derive(Debug, Clone, PartialEq)]
 pub struct Output {
@@ -647,6 +754,16 @@ impl Display for Output {
             .collect::<Vec<String>>();
 
         write!(f, "writeln {}", expressions.join(", "))
+    }
+}
+
+impl Postfix for Output {
+    fn postfix(&self) -> String {
+        let expressions = self.expressions.iter()
+            .map(|expr| expr.postfix())
+            .collect::<Vec<String>>();
+
+        format!("{} writeln", expressions.join(" writeln "))
     }
 }
 
@@ -743,6 +860,18 @@ impl Display for Expression {
     }
 }
 
+impl Postfix for Expression {
+    fn postfix(&self) -> String {
+        match self {
+            Self::Identifier(ident) => format!("{ident}"),
+            Self::Infix(infix) => format!("{}", infix.postfix()),
+            Self::Prefix(prefix) => format!("{}", prefix.postfix()),
+            Self::Primitive(primitive) => format!("{primitive}"),
+            Self::Nested { expression, .. } => format!("{}", expression.postfix())
+        }
+    }
+}
+
 impl Expression {
     pub fn location(&self) -> SrcSpan {
         match self {
@@ -831,6 +960,12 @@ impl Display for Infix {
     }
 }
 
+impl Postfix for Infix {
+    fn postfix(&self) -> String {
+        format!("{} {} {}", self.left.postfix(), self.right.postfix(), self.operator.as_literal())
+    }
+}
+
 // prefix -> <unary_operation> <expression>
 #[derive(Debug, Clone, PartialEq)]
 pub struct Prefix {
@@ -860,6 +995,12 @@ impl Parse for Prefix {
 impl Display for Prefix {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}{}", self.operator.as_literal(), self.expression)
+    }
+}
+
+impl Postfix for Prefix {
+    fn postfix(&self) -> String {
+        format!("{} {}", self.expression.postfix(), self.operator.as_literal())
     }
 }
 

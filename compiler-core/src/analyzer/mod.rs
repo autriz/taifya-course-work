@@ -6,7 +6,12 @@ use error::{Error, Problems, Warning};
 mod tests;
 
 use crate::{
-    ast::{Expression, Identifier, Infix, Module, Operator, Prefix, Primitive, Statement}, environment::Environment, lexer::SrcSpan, value::ValueType, token::Token, warning::TypeWarningEmitter
+    ast::{Expression, Identifier, Infix, Module, Operator, Prefix, Primitive, Statement}, 
+    environment::Environment, 
+    lexer::SrcSpan, 
+    value::ValueType, 
+    token::Token, 
+    warning::TypeWarningEmitter
 };
 
 pub enum Outcome<T, E> {
@@ -55,9 +60,12 @@ impl ModuleAnalyzer {
     fn analyze_statement(&mut self, statement: Statement, env: &mut Environment) {
         match statement {
             Statement::Declaration(declaration) => {
+                if declaration.identifiers.len() == 0 {
+                    self.problems.warning(Warning::EmptyDeclaration { location: declaration.location });
+                }
+
                 for identifiers in declaration.identifiers {
                     for name in identifiers.names {
-                        // println!("declare {}", name.value);
                         match env.get(&name.value) {
                             None => {
                                 env.declare(
@@ -93,6 +101,7 @@ impl ModuleAnalyzer {
                     }
                 };
                 env.increment_usage(&assignment.identifier.value);
+                env.increment_initialization(&assignment.identifier.value);
 
                 let value = assignment.value;
                 let value_type = match get_expression_type(value.clone(), env) {
@@ -199,6 +208,9 @@ impl ModuleAnalyzer {
                     }
                 };
 
+                env.increment_usage(&identifier.value);
+                env.increment_initialization(&identifier.value);
+
                 if identifier_type != ValueType::Integer {
                     self.problems.error(Error::TypeMismatch { 
                         location: identifier.location,
@@ -262,11 +274,15 @@ impl ModuleAnalyzer {
             },
             Operator::Input(input) => {
                 input.identifiers.iter().for_each(|ident| {
-                    if let None = env.get(&ident.value) {
-                        self.problems.error(Error::VariableNotDeclared { 
+                    match env.get(&ident.value) {
+                        Some(_) => {
+                            env.increment_usage(&ident.value);
+                            env.increment_initialization(&ident.value);
+                        },
+                        None => self.problems.error(Error::VariableNotDeclared { 
                             location: ident.location,
                             variable: ident.value.clone()
-                        });
+                        })
                     }
                 });
             },
@@ -278,8 +294,10 @@ impl ModuleAnalyzer {
         }
     }
 
-    fn analyze_expression(&self, expression: Expression, env: &mut Environment) {
-        let _ = get_expression_type(expression, env);
+    fn analyze_expression(&mut self, expression: Expression, env: &mut Environment) {
+        if let Err(err) = get_expression_type(expression, env) {
+            self.problems.error(err);
+        }
     }
 }
 
@@ -289,6 +307,13 @@ fn get_expression_type(
 ) -> Result<ValueType, Error> {
     match expression {
         Expression::Identifier(identifier) => {
+            if !env.is_initialized(&identifier.value) {
+                return Err(Error::VariableNotInitialized { 
+                    location: identifier.location, 
+                    variable: identifier.value 
+                })
+            }
+
             env.increment_usage(&identifier.value);
 
             get_identifier_type(identifier, env)

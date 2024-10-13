@@ -188,7 +188,7 @@ impl Lexer {
 				(start_pos as u32, token, end_pos as u32)
 			},
 			b'a'..=b'z' | b'A'..=b'Z' => {
-				return self.lex_ident();
+				return Ok(self.lex_ident());
 			},
 			b'0'..=b'9' | b'.' => {
 				return self.lex_number();
@@ -242,7 +242,7 @@ impl Lexer {
 		}
 	}
 
-	fn lex_ident(&mut self) -> LexResult {
+	fn lex_ident(&mut self) -> Spanned {
         let start_pos = self.position;
 
 		while self.ch.is_ascii_alphanumeric() {
@@ -256,9 +256,9 @@ impl Lexer {
 		).to_string();
 
         if let Some(tok) = str_to_keyword(&ident) {
-            Ok((start_pos as u32, tok, end_pos as u32))
+           	(start_pos as u32, tok, end_pos as u32)
         } else {
-            Ok((start_pos as u32, Token::Ident(ident), end_pos as u32))
+            (start_pos as u32, Token::Ident(ident), end_pos as u32)
         }
 	}
 
@@ -393,72 +393,52 @@ impl Lexer {
 		}
 
 		let token = match expected_type {
-			NumberType::Binary => {
-				if i64::from_str_radix(&value, 2).is_ok() && !has_period {
-					Token::Binary(value)
-				}
-				else {
-					return Err(LexicalError {
-						error: if !has_period { 
-							LexicalErrorType::DigitOutOfRadix 
-						} else { 
-							LexicalErrorType::UnsupportedFloatingPoint 
-						},
-						location: SrcSpan::from_usize(start_pos, end_pos)
-					})
-				}
+			NumberType::Binary => match i64::from_str_radix(&value, 2) {
+				Ok(_) => Token::Binary(value),
+				Err(_) => return Err(LexicalError {
+					error: if !has_period { 
+						LexicalErrorType::DigitOutOfRadix 
+					} else { 
+						LexicalErrorType::UnsupportedFloatingPoint 
+					},
+					location: SrcSpan::from_usize(start_pos, end_pos)
+				})
 			},
-			NumberType::Octal => {
-				if i64::from_str_radix(&value, 8).is_ok() && !has_period {
-					Token::Octal(value)
-				}
-				else {
-					return Err(LexicalError {
-						error: if !has_period { 
-							LexicalErrorType::DigitOutOfRadix 
-						} else { 
-							LexicalErrorType::UnsupportedFloatingPoint 
-						},
-						location: SrcSpan::from_usize(start_pos, end_pos)
-					})
-				}
+			NumberType::Octal => match i64::from_str_radix(&value, 8) {
+				Ok(_) => Token::Octal(value),
+				Err(_) => return Err(LexicalError {
+					error: if !has_period { 
+						LexicalErrorType::DigitOutOfRadix 
+					} else { 
+						LexicalErrorType::UnsupportedFloatingPoint 
+					},
+					location: SrcSpan::from_usize(start_pos, end_pos)
+				})
 			},
-			NumberType::Hex => {
-				if i64::from_str_radix(&value, 16).is_ok() && !has_period {
-					Token::Hexadecimal(value)
-				}
-				else {
-					return Err(LexicalError {
-						error: if !has_period { 
-							LexicalErrorType::DigitOutOfRadix 
-						} else { 
-							LexicalErrorType::UnsupportedFloatingPoint 
-						},
-						location: SrcSpan::from_usize(start_pos, end_pos)
-					})
-				}
+			NumberType::Hex => match i64::from_str_radix(&value, 16) {
+				Ok(_) => Token::Hexadecimal(value),
+				Err(_) => return Err(LexicalError {
+					error: if !has_period { 
+						LexicalErrorType::DigitOutOfRadix 
+					} else { 
+						LexicalErrorType::UnsupportedFloatingPoint 
+					},
+					location: SrcSpan::from_usize(start_pos, end_pos)
+				})
 			},
-			NumberType::Int => {
-				if i64::from_str_radix(&value, 10).is_ok() {
-					Token::Int(value)
-				}
-				else {
-					return Err(LexicalError {
-						error: LexicalErrorType::DigitOutOfRadix,
-						location: SrcSpan::from_usize(start_pos, end_pos)
-					})
-				}
+			NumberType::Int => match i64::from_str_radix(&value, 10) {
+				Ok(_) => Token::Int(value),
+				Err(_) => return Err(LexicalError {
+					error: LexicalErrorType::DigitOutOfRadix,
+					location: SrcSpan::from_usize(start_pos, end_pos)
+				})
 			},
-			NumberType::Float => {
-				if value.parse::<f64>().is_ok() {
-					Token::Float(value)
-				}
-				else {
-					return Err(LexicalError {
-						error: LexicalErrorType::DigitOutOfRadix,
-						location: SrcSpan::from_usize(start_pos, end_pos)
-					})
-				}
+			NumberType::Float => match value.parse::<f64>() {
+				Ok(_) => Token::Float(value),
+				Err(_) => return Err(LexicalError {
+					error: LexicalErrorType::DigitOutOfRadix,
+					location: SrcSpan::from_usize(start_pos, end_pos)
+				})
 			}
 		};
 

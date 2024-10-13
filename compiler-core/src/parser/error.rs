@@ -35,9 +35,6 @@ impl ParseError {
                 let found = match token {
                     Token::Int(_) => "an Int".to_string(),
                     Token::Float(_) => "a Float".to_string(),
-                    Token::Hexadecimal(_) => "a Hex".to_string(),
-                    Token::Octal(_) => "an Octal".to_string(),
-                    Token::Binary(_) => "a Binary".to_string(),
                     Token::String(_) => "a String".to_string(),
                     Token::Ident(_) => "an Identifier".to_string(),
                     _ if token.is_reserved_word() => format!("the keyword `{}`", token.as_literal()),

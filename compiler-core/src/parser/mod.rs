@@ -106,7 +106,6 @@ impl Parser {
 
         if self.lex_errors.len() > 0 {
             let location = self.lex_errors[0].location;
-            println!("{:?}", location);
 
             return parse_error(
                 ParseErrorType::LexError { 

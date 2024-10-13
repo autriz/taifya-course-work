@@ -44,6 +44,10 @@ pub enum Error {
         location: SrcSpan,
         variable: String,
     },
+    VariableNotInitialized {
+        location: SrcSpan,
+        variable: String,
+    },
     VariableRedeclaration {
         location_a: SrcSpan,
         location_b: SrcSpan,
@@ -66,6 +70,7 @@ impl Error {
         match self {
             Error::TypeMismatch { location, .. }
             | Error::VariableNotDeclared { location, .. }
+            | Error::VariableNotInitialized { location, .. }
             | Error::VariableRedeclaration { location_b: location, .. }
             | Error::InvalidUnaryOperation { location }
             | Error::OperatorMismatch { location_a: location, .. } => location.start
@@ -76,6 +81,9 @@ impl Error {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Warning {
     UnusedVariable {
+        location: SrcSpan
+    },
+    EmptyDeclaration {
         location: SrcSpan
     },
     UnreachableIfClause {
@@ -96,6 +104,7 @@ impl Warning {
     pub fn location(&self) -> SrcSpan {
         match self {
             Warning::UnusedVariable { location, .. }
+            | Warning::EmptyDeclaration { location }
             | Warning::UnreachableIfClause { location }
             | Warning::UnreachableElseClause { location }
             | Warning::InfiniteLoop { location }
