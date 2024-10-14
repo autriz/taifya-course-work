@@ -33,6 +33,7 @@ impl Parse for Program {
         let (start, mut end) = parser.expect_one(Token::Begin)?;
 
         let mut statements = vec![];
+        let mut is_ended = false;
 
         while let Some((start, token, _end)) = parser.current_token.take() {
             if token != Token::End {
@@ -54,6 +55,7 @@ impl Parse for Program {
                     ),
                     (Some((_, Token::Semicolon, _)), _) => parser.step(),
                     (Some((_, Token::End, _)), _) => {
+                        is_ended = true;
                         end = parser.next_token().unwrap().2;
                         break 
                     },
@@ -67,11 +69,19 @@ impl Parse for Program {
                     ),
                 }
             } else {
+                is_ended = true;
                 end = _end;
                 parser.step();
                 break;
             }
         };
+
+        if !is_ended {
+            return parse_error(
+                ParseErrorType::ExpectedEnd,
+                SrcSpan { start: end, end: end + 1 }
+            )
+        }
 
         Ok(Self {
             statements,
@@ -361,6 +371,7 @@ impl Parse for Nested {
         let (start, mut end) = parser.expect_one(Token::Begin)?;
 
         let mut operators = vec![];
+        let mut is_ended = false;
 
         while let Some((start, token, _end)) = parser.current_token.take() {
             if token != Token::End {
@@ -382,6 +393,7 @@ impl Parse for Nested {
                     ),
                     (Some((_, Token::Semicolon, _)), _) => parser.step(),
                     (Some((_, Token::End, _)), _) => {
+                        is_ended = true;
                         end = parser.next_token().unwrap().2;
                         break 
                     },
@@ -395,11 +407,19 @@ impl Parse for Nested {
                     ),
                 }
             } else {
+                is_ended = true;
                 end = _end;
                 parser.step();
                 break;
             }
         };
+
+        if !is_ended {
+            return parse_error(
+                ParseErrorType::ExpectedEnd,
+                SrcSpan { start: end, end: end + 1 }
+            )
+        }
 
         Ok(Self {
             operators,

@@ -4,6 +4,7 @@ use crate::{lexer::{LexicalError, SrcSpan}, token::Token};
 pub enum ParseErrorType {
     ExpectedIdent,
     ExpectedOperator,
+    ExpectedEnd,
     UnexpectedSemicolonBeforeEnd,
     UnexpectedEof,
     UnexpectedToken {
@@ -27,6 +28,7 @@ impl ParseError {
         match &self.error {
             ParseErrorType::ExpectedIdent => ("Expected identifier", vec![]),
             ParseErrorType::ExpectedOperator => ("Expected operator", vec![]),
+            ParseErrorType::ExpectedEnd => ("Expected end", vec![]),
             ParseErrorType::UnexpectedSemicolonBeforeEnd => ("Unexpected semicolon before `end`", vec![]),
             ParseErrorType::ExpectedType => ("Expected type", vec![]),
             ParseErrorType::ExpectedValue => ("Expected value after `:=`", vec![]),

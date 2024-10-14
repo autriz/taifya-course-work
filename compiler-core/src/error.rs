@@ -49,8 +49,8 @@ impl Error {
 
                 let adjusted_location = if error.error == ParseErrorType::UnexpectedEof {
                     SrcSpan {
-                        start: (src.len() - 1) as u32,
-                        end: (src.len() - 1) as u32,
+                        start: src.len() as u32,
+                        end: src.len() as u32,
                     }
                 } else {
                     error.span

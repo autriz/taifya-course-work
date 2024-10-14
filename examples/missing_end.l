@@ -1,0 +1,2 @@
+begin
+    var a, b: %;
