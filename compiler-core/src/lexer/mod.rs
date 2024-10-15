@@ -387,80 +387,9 @@ impl<T: Iterator<Item = (u32, char)>> Lexer<T> {
 			}
 		}
 
-		println!("{value} | {:?}", self.ch);
-		// todo!();
-		// if is_radix(ch) && !self.ch.is_ascii_hexdigit() && self.ch != Some('.') {
-		// 	break;
-		// } else if !self.ch.is_ascii_hexdigit() && self.ch != Some('.') {
-		// 	break;
-		// } else if has_period && self.ch == Some('.') {
-		// 	self.next_char();
-
-		// 	while self.ch.is_ascii_digit() {
-		// 		self.next_char();
-		// 	}
-
-		// 	let end_pos = self.position;
-
-		// 	return Err(LexicalError {
-		// 		error: LexicalErrorType::MultipleFloatingPoints,
-		// 		location: SrcSpan::from(start_pos, end_pos)
-		// 	});
-		// } else if !has_period && self.ch == '.' {
-		// 	has_period = true;
-		// } else if !has_hex && is_ascii_hexalpha(self.ch) {
-		// 	has_hex = true;
-		// }
-
-		// if !has_exponent && is_exponent(self.ch) {
-		// 	let has_digit_before_exponent = self.input[self.position - 1]
-		// 		.is_ascii_hexdigit();
-
-		// 	has_exponent = true;
-			
-		// 	self.next_char();
-
-		// 	match self.ch {
-		// 		Some('+') | Some('-') => { let _ = self.next_char(); },
-		// 		_ => {}
-		// 	}
-
-		// 	if !has_digit_before_exponent {
-		// 		while self.ch.is_ascii_digit() {
-		// 			self.next_char();
-		// 		}
-
-		// 		let end_pos = self.position;
-
-		// 		return Err(LexicalError {
-		// 			error: LexicalErrorType::MissingNumberBeforeExponent,
-		// 			location: SrcSpan::from(start_pos, end_pos)
-		// 		});
-		// 	}
-
-		// 	if self.ch.is_ascii_digit() {
-		// 		while self.ch.is_ascii_digit() {
-		// 			self.next_char();
-		// 		}
-		// 	} else {
-		// 		let end_pos = self.position;
-
-		// 		return Err(LexicalError {
-		// 			error: LexicalErrorType::MissingDigitsAfterExponent,
-		// 			location: SrcSpan::from(start_pos, end_pos)
-		// 		});
-		// 	}
-
-
-		// 	break;
-		// }
-
-		// self.next_char();
-
 		let end_pos = self.position;
 
 		let last_char = value.chars().nth(value.len() - 1).unwrap();
-		
 
 		let expected_type = match last_char {
 			'B' | 'b' => NumberType::Binary,
