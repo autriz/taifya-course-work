@@ -155,7 +155,7 @@ fn test_program() -> Result<(), ParseError> {
         end
     "#;
 
-    let lexer = Lexer::new(input);
+    let lexer = Lexer::new(input.char_indices().map(|(i, c)| (i as u32, c)));
     let mut parser = Parser::new(lexer);
 
     let parsed = parser.parse()?;

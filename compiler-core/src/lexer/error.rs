@@ -2,12 +2,13 @@ use super::SrcSpan;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LexicalErrorType {
-    UnrecognizedToken { tok: u8 },
+    UnrecognizedToken { tok: char },
     MissingNumberBeforeExponent,
     MissingDigitsAfterExponent,
     MultipleFloatingPoints,
     DigitOutOfRadix,
     UnsupportedFloatingPoint,
+    UnexpectedStringEnd,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -36,6 +37,9 @@ impl LexicalError {
             },
             LexicalErrorType::UnsupportedFloatingPoint => {
                 ("This number doesn't support floating point variants", vec![])
+            },
+            LexicalErrorType::UnexpectedStringEnd => {
+                ("Unexpected string end", vec![])
             }
         }
     }

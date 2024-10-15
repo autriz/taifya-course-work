@@ -25,7 +25,7 @@ pub fn start() -> std::io::Result<()> {
 			"" => {},
 			".exit" => return Ok(()),
 			_ => {
-				let mut lexer = Lexer::new(input.as_str());
+				let mut lexer = Lexer::new(input.char_indices().map(|(i, c)| (i as u32, c)));
 
 				while let Some(res) = lexer.next() {
                     match res {
@@ -39,10 +39,11 @@ pub fn start() -> std::io::Result<()> {
                         Err(err) => {
                             let details = err.details();
                             let location = err.location;
-                            println!("[at {}:{}] Lexical Error: {}", location.start, location.end, details.0);
+                            println!("[at {}] Lexical Error: {}", location.start, details.0);
                             if details.1.len() > 0 {
                                 println!("{}", details.1.join("\n"));
                             }
+							break;
                         }
                     }
 				}

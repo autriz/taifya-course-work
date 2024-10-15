@@ -17,7 +17,7 @@ pub struct SrcSpan {
 }
 
 impl SrcSpan {
-	pub fn from_usize(start: usize, end: usize) -> Self {
+	pub fn from(start: u32, end: u32) -> Self {
 		Self { start: start as u32, end: end as u32 }
 	}
 }
@@ -58,28 +58,34 @@ pub enum NumberType {
 }
 
 #[derive(Debug)]
-pub struct Lexer {
-	position: usize,
-	next_position: usize,
-	ch: u8,
-	input: Vec<u8>,
+pub struct Lexer<T: Iterator<Item = (u32, char)>> {
+	position: u32,
+	next_position: u32,
+	ch: Option<char>,
+	next_ch: Option<char>,
+	input: T,
 }
 
-impl Display for Lexer {
+impl<T: Iterator<Item = (u32, char)>> Display for Lexer<T> {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(f, "Lexer {{\n\tposition: {},\n\tnext_position: {},\n\tch: {},\n}}", self.position, self.next_position, String::from_utf8_lossy(&[self.ch]).to_string())
+		write!(f, 
+			"Lexer {{\n\tposition: {},\n\tnext_position: {},\n\tch: {:?}, next_ch: {:?}\n}}", 
+			self.position, self.next_position, self.ch, self.next_ch
+		)
 	}
 }
 
-impl Lexer {
-    pub fn new(input: &str) -> Self {
+impl<T: Iterator<Item = (u32, char)>> Lexer<T> {
+    pub fn new(input: T) -> Self {
         let mut lexer = Self {
             position: 0,
             next_position: 0,
-            ch: 0,
-            input: input.as_bytes().to_vec(),
+            ch: None,
+			next_ch: None,
+            input,
         };
 
+        lexer.next_char();
         lexer.next_char();
 
         return lexer;
@@ -88,144 +94,147 @@ impl Lexer {
     pub fn next_token(&mut self) -> LexResult {
 		self.skip_whitespace();
 
-		let span = match self.ch {
-			b'(' => {
-				if self.peek() == b'*' {
-					self.lex_comment()
-				} else {
-					self.eat_one_char(Token::LParen)
-				}
-			},
-			b')' => self.eat_one_char(Token::RParen),
-			b':' => {
-				if self.peek() == b'=' {
+		let span  = match self.ch {
+			Some(ch) => match ch {
+				'(' => {
+					if self.next_ch == Some('*') {
+						self.lex_comment()
+					} else {
+						self.eat_one_char(Token::LParen)
+					}
+				},
+				')' => self.eat_one_char(Token::RParen),
+				':' => {
+					if self.next_ch == Some('=') {
+						let start_pos = self.position;
+						self.next_char();
+						let end_pos = self.position;
+						self.next_char();
+		
+						(start_pos as u32, Token::Assign, end_pos as u32)
+					} else {
+						self.eat_one_char(Token::Colon)
+					}
+				},
+				';' => self.eat_one_char(Token::Semicolon),
+				'!' => {
+					if self.next_ch == Some('=') {
+						let start_pos = self.position;
+						self.next_char();
+						let end_pos = self.position;
+						self.next_char();
+		
+						(start_pos as u32, Token::NotEqual, end_pos as u32)
+					} else {
+						self.eat_one_char(Token::Bang)
+					}
+				},
+				'>' => {
+					if self.next_ch == Some('=') {
+						let start_pos = self.position;
+						self.next_char();
+						let end_pos = self.position;
+						self.next_char();
+		
+						(start_pos as u32, Token::GreaterThanOrEqual, end_pos as u32)
+					} else {
+						self.eat_one_char(Token::GreaterThan)
+					}
+				},
+				'<' => {
+					if self.next_ch == Some('=') {
+						let start_pos = self.position;
+						self.next_char();
+						let end_pos = self.position;
+						self.next_char();
+		
+						(start_pos as u32, Token::LessThanOrEqual, end_pos as u32)
+					} else {
+						self.eat_one_char(Token::LessThan)
+					}
+				},
+				',' => self.eat_one_char(Token::Comma),
+				'%' => self.eat_one_char(Token::Percent),
+				'@' => self.eat_one_char(Token::At),
+				'$' => self.eat_one_char(Token::Dollar),
+				'+' => self.eat_one_char(Token::Plus),
+				'-' => self.eat_one_char(Token::Minus),
+				'*' => self.eat_one_char(Token::Asterisk),
+				'/' => self.eat_one_char(Token::Slash),
+				'=' if self.next_ch == Some('=') => {
 					let start_pos = self.position;
 					self.next_char();
 					let end_pos = self.position;
 					self.next_char();
-
-					(start_pos as u32, Token::Assign, end_pos as u32)
-				} else {
-					self.eat_one_char(Token::Colon)
-				}
-			},
-			b';' => self.eat_one_char(Token::Semicolon),
-			b'!' => {
-				if self.peek() == b'=' {
+		
+					(start_pos as u32, Token::Equal, end_pos as u32)
+				},
+				'&' if self.next_ch == Some('&') => {
 					let start_pos = self.position;
 					self.next_char();
 					let end_pos = self.position;
 					self.next_char();
-
-					(start_pos as u32, Token::NotEqual, end_pos as u32)
-				} else {
-					self.eat_one_char(Token::Bang)
-				}
-			},
-			b'>' => {
-				if self.peek() == b'=' {
+		
+					(start_pos as u32, Token::And, end_pos as u32)
+				},
+				'|' if self.next_ch == Some('|') => {
 					let start_pos = self.position;
 					self.next_char();
 					let end_pos = self.position;
 					self.next_char();
-
-					(start_pos as u32, Token::GreaterThanOrEqual, end_pos as u32)
-				} else {
-					self.eat_one_char(Token::GreaterThan)
+		
+					(start_pos as u32, Token::Or, end_pos as u32)
+				},
+				'"' => {
+					return self.lex_string();
+				},
+				'a'..='z' | 'A'..='Z' => {
+					return Ok(self.lex_ident());
+				},
+				'0'..='9' | '.' => {
+					return self.lex_number();
+				},
+				c => {
+					let location = self.position as u32;
+					return Err(LexicalError {
+						error: LexicalErrorType::UnrecognizedToken { tok: c },
+						location: SrcSpan {
+							start: location,
+							end: location,
+						},
+					});
 				}
 			},
-			b'<' => {
-				if self.peek() == b'=' {
-					let start_pos = self.position;
-					self.next_char();
-					let end_pos = self.position;
-					self.next_char();
-
-					(start_pos as u32, Token::LessThanOrEqual, end_pos as u32)
-				} else {
-					self.eat_one_char(Token::LessThan)
-				}
-			},
-			b',' => self.eat_one_char(Token::Comma),
-			b'%' => self.eat_one_char(Token::Percent),
-			b'@' => self.eat_one_char(Token::At),
-			b'$' => self.eat_one_char(Token::Dollar),
-			b'+' => self.eat_one_char(Token::Plus),
-			b'-' => self.eat_one_char(Token::Minus),
-			b'*' => self.eat_one_char(Token::Asterisk),
-			b'/' => self.eat_one_char(Token::Slash),
-			b'=' if self.peek() == b'=' => {
-				let start_pos = self.position;
-				self.next_char();
-				let end_pos = self.position;
-				self.next_char();
-
-				(start_pos as u32, Token::Equal, end_pos as u32)
-			},
-			b'&' if self.peek() == b'&' => {
-				let start_pos = self.position;
-				self.next_char();
-				let end_pos = self.position;
-				self.next_char();
-
-				(start_pos as u32, Token::And, end_pos as u32)
-			},
-			b'|' if self.peek() == b'|' => {
-				let start_pos = self.position;
-				self.next_char();
-				let end_pos = self.position;
-				self.next_char();
-
-				(start_pos as u32, Token::Or, end_pos as u32)
-			},
-			b'"' => {
-				let start_pos = self.position;
-				self.next_char();
-				let token = Token::String(self.lex_string());
-				let end_pos = self.position;
-				self.next_char();
-
-				(start_pos as u32, token, end_pos as u32)
-			},
-			b'a'..=b'z' | b'A'..=b'Z' => {
-				return Ok(self.lex_ident());
-			},
-			b'0'..=b'9' | b'.' => {
-				return self.lex_number();
-			},
-			0 => self.eat_one_char(Token::Eof),
-			c => {
-				let location = self.position as u32;
-                return Err(LexicalError {
-                    error: LexicalErrorType::UnrecognizedToken { tok: c },
-                    location: SrcSpan {
-                        start: location,
-                        end: location,
-                    },
-                });
+			None => {
+				self.eat_one_char(Token::Eof)
 			}
 		};
 
 		Ok(span)
     }
 
-	fn peek(&self) -> u8 {
-		if self.next_position >= self.input.len() {
-			0
-		} else {
-			self.input[self.next_position]
-		}
-	}
+    fn next_char(&mut self) -> Option<char> {
+		let ch = self.ch;
 
-    fn next_char(&mut self) {
-		if self.next_position >= self.input.len() {
-			self.ch = 0;
-		} else {
-			self.ch = self.input[self.next_position];
-		}
+		let next = match self.input.next() {
+			Some((pos, ch)) => {
+				self.position = self.next_position;
+				self.next_position = pos;
 
-		self.position = self.next_position;
-		self.next_position += 1;
+				Some(ch)
+			},
+			None => {
+				self.position = self.next_position;
+				self.next_position += 1;
+
+				None
+			}
+		};
+
+		self.ch = self.next_ch;
+		self.next_ch = next;
+
+		ch
 	}
 
 	fn eat_one_char(&mut self, token: Token) -> Spanned {
@@ -237,23 +246,23 @@ impl Lexer {
 	}
 
     fn skip_whitespace(&mut self) {
-		while self.ch.is_ascii_whitespace() {
-			self.next_char();
+		while self.ch.is_some_and(|ch| ch.is_ascii_whitespace()) {
+			let _ = self.next_char();
 		}
 	}
 
 	fn lex_ident(&mut self) -> Spanned {
         let start_pos = self.position;
+		let mut ident = String::new();
 
-		while self.ch.is_ascii_alphanumeric() {
-			self.next_char();
+		loop {
+			match self.ch {
+				Some(ch) if ch.is_ascii_alphanumeric() => ident.push(self.next_char().unwrap()),
+				_ => break
+			}
 		}
 
         let end_pos = self.position;
-
-		let ident = String::from_utf8_lossy(
-			&self.input[start_pos..end_pos]
-		).to_string();
 
         if let Some(tok) = str_to_keyword(&ident) {
            	(start_pos as u32, tok, end_pos as u32)
@@ -262,134 +271,225 @@ impl Lexer {
         }
 	}
 
-	fn lex_string(&mut self) -> String {
-		let pos = self.position;
+	fn lex_string(&mut self) -> LexResult {
+		let start = self.position;
+		let _ = self.next_char();
+		let mut value = String::new();
 
-		while self.ch != b'"' {
-			self.next_char();
+		loop {
+			match self.next_char() {
+				Some('"') => break,
+				Some(ch) => value.push(ch),
+				None => return Err(LexicalError {
+					error: LexicalErrorType::UnexpectedStringEnd,
+					location: SrcSpan {
+						start,
+						end: start
+					}
+				})
+			}
 		}
 
-		String::from_utf8_lossy(&self.input[pos..self.position])
-			.to_string()
+		let end = self.position;
+
+		Ok((start, Token::String(value), end))
 	} 
 
 	fn lex_number(&mut self) -> LexResult {
 		let start_pos = self.position;
 
+		let mut value = String::from("");
+
 		let mut has_period = false;
 		let mut has_hex = false;
 		let mut has_exponent = false;
+		let mut has_number_before_exponent = false;
+		let mut has_number_after_exponent = false;
 
-		fn is_ascii_hexalpha(ch: u8) -> bool { 
-			match ch { 
-				b'a'..=b'f' | b'A'..=b'F' => true, 
+		fn is_ascii_hexalpha(ch: char) -> bool { 
+			match ch {
+				'a'..='f' | 'A'..='F' => true, 
 				_ => false 
-			} 
+			}
 		}
 
-		fn is_exponent(ch: u8) -> bool {
+		fn is_exponent(ch: char) -> bool {
 			match ch {
-				b'e' | b'E' => true,
+				'e' | 'E' => true,
 				_ => false
 			}
 		}
 
-		fn is_radix(ch: u8) -> bool {
+		fn is_radix(ch: char) -> bool {
 			match ch {
-				b'B' | b'b' => true,
-				b'O' | b'o' => true,
-				b'D' | b'd' => true,
-				b'H' | b'h' => true,
+				'B' | 'b' => true,
+				'O' | 'o' => true,
+				'D' | 'd' => true,
+				'H' | 'h' => true,
 				_ => false
 			}
 		}
 
-		while self.ch.is_ascii_hexdigit() || self.ch == b'.' {
-			if is_radix(self.ch) && !self.peek().is_ascii_hexdigit() && self.peek() != b'.' {
-				break;
-			} else if !self.ch.is_ascii_hexdigit() && self.ch != b'.' {
-				break;
-			} else if has_period && self.ch == b'.' {
-				self.next_char();
+		loop {
+			println!("{:?}", self.ch);
+			match self.ch {
+				Some(ch) if is_radix(ch) => {
+					value.push(self.next_char().unwrap());
+				},
+				Some(ch) if is_ascii_hexalpha(ch) => {
+					if !has_exponent && is_exponent(ch) {
+						has_number_before_exponent = value.chars()
+							.nth(value.len() - 1)
+							.unwrap()
+							.is_ascii_digit();
 
-				while self.ch.is_ascii_digit() {
-					self.next_char();
-				}
+						has_exponent = true;
 
-				let end_pos = self.position;
+						value.push(self.next_char().unwrap());
 
-				return Err(LexicalError {
-					error: LexicalErrorType::MultipleFloatingPoints,
-					location: SrcSpan::from_usize(start_pos, end_pos)
-				});
-			} else if !has_period && self.ch == b'.' {
-				has_period = true;
-			} else if !has_hex && is_ascii_hexalpha(self.ch) {
-				has_hex = true;
-			}
+						match self.ch {
+							Some('+') | Some('-') => { value.push(self.next_char().unwrap()); },
+							_ => {}
+						}
 
-			if !has_exponent && is_exponent(self.ch) {
-				let has_digit_before_exponent = self.input[self.position - 1]
-					.is_ascii_hexdigit();
-
-				has_exponent = true;
-				
-				self.next_char();
-
-				match self.ch {
-					b'+' | b'-' => self.next_char(),
-					_ => {}
-				}
-
-				if !has_digit_before_exponent {
-					while self.ch.is_ascii_digit() {
-						self.next_char();
+						has_number_after_exponent = match self.ch {
+							Some(ch) if ch.is_ascii_digit() => true,
+							_ => false
+						};
+					} else {
+						if !has_hex {
+							has_hex = true;
+						}
+	
+						value.push(self.next_char().unwrap());
 					}
-
-					let end_pos = self.position;
-
-					return Err(LexicalError {
-						error: LexicalErrorType::MissingNumberBeforeExponent,
-						location: SrcSpan::from_usize(start_pos, end_pos)
-					});
 				}
+				Some(ch) if ch.is_ascii_digit() => {
+					value.push(self.next_char().unwrap());
+				},
+				Some(ch) if ch == '.' => {
+					if has_period {
+						let _ = self.next_char().unwrap();
 
-				if self.ch.is_ascii_digit() {
-					while self.ch.is_ascii_digit() {
-						self.next_char();
+						let end_pos = self.position;
+
+						return Err(LexicalError {
+							error: LexicalErrorType::MultipleFloatingPoints,
+							location: SrcSpan::from(start_pos, end_pos)
+						});
+					} else {
+						has_period = true;
+						value.push(self.next_char().unwrap());
 					}
-				} else {
-					let end_pos = self.position;
-
-					return Err(LexicalError {
-						error: LexicalErrorType::MissingDigitsAfterExponent,
-						location: SrcSpan::from_usize(start_pos, end_pos)
-					});
-				}
-
-
-				break;
+				},
+				Some(_) => break,
+				None => todo!()
 			}
-
-			self.next_char();
 		}
+
+		println!("{value} | {:?}", self.ch);
+		// todo!();
+		// if is_radix(ch) && !self.ch.is_ascii_hexdigit() && self.ch != Some('.') {
+		// 	break;
+		// } else if !self.ch.is_ascii_hexdigit() && self.ch != Some('.') {
+		// 	break;
+		// } else if has_period && self.ch == Some('.') {
+		// 	self.next_char();
+
+		// 	while self.ch.is_ascii_digit() {
+		// 		self.next_char();
+		// 	}
+
+		// 	let end_pos = self.position;
+
+		// 	return Err(LexicalError {
+		// 		error: LexicalErrorType::MultipleFloatingPoints,
+		// 		location: SrcSpan::from(start_pos, end_pos)
+		// 	});
+		// } else if !has_period && self.ch == '.' {
+		// 	has_period = true;
+		// } else if !has_hex && is_ascii_hexalpha(self.ch) {
+		// 	has_hex = true;
+		// }
+
+		// if !has_exponent && is_exponent(self.ch) {
+		// 	let has_digit_before_exponent = self.input[self.position - 1]
+		// 		.is_ascii_hexdigit();
+
+		// 	has_exponent = true;
+			
+		// 	self.next_char();
+
+		// 	match self.ch {
+		// 		Some('+') | Some('-') => { let _ = self.next_char(); },
+		// 		_ => {}
+		// 	}
+
+		// 	if !has_digit_before_exponent {
+		// 		while self.ch.is_ascii_digit() {
+		// 			self.next_char();
+		// 		}
+
+		// 		let end_pos = self.position;
+
+		// 		return Err(LexicalError {
+		// 			error: LexicalErrorType::MissingNumberBeforeExponent,
+		// 			location: SrcSpan::from(start_pos, end_pos)
+		// 		});
+		// 	}
+
+		// 	if self.ch.is_ascii_digit() {
+		// 		while self.ch.is_ascii_digit() {
+		// 			self.next_char();
+		// 		}
+		// 	} else {
+		// 		let end_pos = self.position;
+
+		// 		return Err(LexicalError {
+		// 			error: LexicalErrorType::MissingDigitsAfterExponent,
+		// 			location: SrcSpan::from(start_pos, end_pos)
+		// 		});
+		// 	}
+
+
+		// 	break;
+		// }
+
+		// self.next_char();
 
 		let end_pos = self.position;
 
-		let value = String::from_utf8_lossy(&self.input[start_pos..end_pos])
-			.to_string();
+		let last_char = value.chars().nth(value.len() - 1).unwrap();
+		
 
-		let expected_type = match self.ch {
-			b'B' | b'b' => NumberType::Binary,
-			b'O' | b'o' => NumberType::Octal,
-			b'D' | b'd' => NumberType::Int,
-			b'H' | b'h' => NumberType::Hex,
-			_ if has_period || has_exponent => NumberType::Float,
+		let expected_type = match last_char {
+			'B' | 'b' => NumberType::Binary,
+			'O' | 'o' => NumberType::Octal,
+			'D' | 'd' => NumberType::Int,
+			'H' | 'h' => NumberType::Hex,
+			_ if has_period || has_exponent => {
+				if has_exponent {
+					if !has_number_before_exponent {
+						return Err(LexicalError {
+							error: LexicalErrorType::MissingNumberBeforeExponent,
+							location: SrcSpan::from(start_pos, end_pos)
+						});
+					}
+					if !has_number_after_exponent {
+						return Err(LexicalError {
+							error: LexicalErrorType::MissingDigitsAfterExponent,
+							location: SrcSpan::from(start_pos, end_pos)
+						});
+					}
+				}
+
+				NumberType::Float
+			},
 			_ => NumberType::Int
 		};
 
-		if is_radix(self.ch) {
-			self.next_char();
+		if is_radix(last_char) {
+			let _  = value.pop();
 		}
 
 		let token = match expected_type {
@@ -401,7 +501,7 @@ impl Lexer {
 					} else { 
 						LexicalErrorType::UnsupportedFloatingPoint 
 					},
-					location: SrcSpan::from_usize(start_pos, end_pos)
+					location: SrcSpan::from(start_pos, end_pos)
 				})
 			},
 			NumberType::Octal => match i64::from_str_radix(&value, 8) {
@@ -412,7 +512,7 @@ impl Lexer {
 					} else { 
 						LexicalErrorType::UnsupportedFloatingPoint 
 					},
-					location: SrcSpan::from_usize(start_pos, end_pos)
+					location: SrcSpan::from(start_pos, end_pos)
 				})
 			},
 			NumberType::Hex => match i64::from_str_radix(&value, 16) {
@@ -423,21 +523,21 @@ impl Lexer {
 					} else { 
 						LexicalErrorType::UnsupportedFloatingPoint 
 					},
-					location: SrcSpan::from_usize(start_pos, end_pos)
+					location: SrcSpan::from(start_pos, end_pos)
 				})
 			},
 			NumberType::Int => match i64::from_str_radix(&value, 10) {
 				Ok(_) => Token::Int(value),
 				Err(_) => return Err(LexicalError {
 					error: LexicalErrorType::DigitOutOfRadix,
-					location: SrcSpan::from_usize(start_pos, end_pos)
+					location: SrcSpan::from(start_pos, end_pos)
 				})
 			},
 			NumberType::Float => match value.parse::<f64>() {
 				Ok(_) => Token::Float(value),
 				Err(_) => return Err(LexicalError {
 					error: LexicalErrorType::DigitOutOfRadix,
-					location: SrcSpan::from_usize(start_pos, end_pos)
+					location: SrcSpan::from(start_pos, end_pos)
 				})
 			}
 		};
@@ -450,13 +550,11 @@ impl Lexer {
 
 		let start_pos = self.next_position;
 
-		while !(self.ch == b'*' && self.peek() == b')') {
-			self.next_char();
+		while (Some('*'), Some(')')) != (self.ch, self.next_ch) {
+			let _ = self.next_char();
 		}
 
 		let end_pos = self.position;
-		let _ = String::from_utf8_lossy(&self.input[start_pos..end_pos])
-			.to_string();
 
 		self.next_char(); // skip asterisk
 		self.next_char(); // skip rparen
@@ -465,7 +563,7 @@ impl Lexer {
 	}
 }
 
-impl Iterator for Lexer {
+impl<T: Iterator<Item = (u32, char)>> Iterator for Lexer<T> {
 	type Item = LexResult;
 
 	fn next(&mut self) -> Option<Self::Item> {

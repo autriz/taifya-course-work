@@ -10,47 +10,48 @@ use crate::{
         Expression, IdentifierType, Module, Parsed, Program
     }, 
     lexer::{
-        Lexer, LexicalError, Spanned, SrcSpan
+        LexResult, Lexer, LexicalError, Spanned, SrcSpan
     }, 
     token::Token
 };
 
-pub trait Parse
+pub trait Parse<T: Iterator<Item = LexResult>>
     where Self: Sized,
 {
     fn parse(
-        parser: &mut Parser, 
+        parser: &mut Parser<T>, 
         precedence: Option<Precedence>
     ) -> Result<Self, ParseError>;
 }
 
-pub trait InfixParse
+pub trait InfixParse<T: Iterator<Item = LexResult>>
     where Self: Sized,
 {
     fn parse(
-        parser: &mut Parser, 
+        parser: &mut Parser<T>, 
         left: Expression, 
         precedence: Option<Precedence>
     ) -> Result<Self, ParseError>;
 }
 
-pub struct Parser {
+pub struct Parser<T: Iterator<Item = LexResult>> {
     pub current_token: Option<Spanned>,
     pub next_token: Option<Spanned>,
     pub comments: Vec<SrcSpan>,
     pub lex_errors: Vec<LexicalError>,
 
-    lexer: Lexer,
+    tokens: T,
 }
 
-impl Parser {
-    pub fn new(lexer: Lexer) -> Self {
+impl<T: Iterator<Item = LexResult>> Parser<T> {
+    pub fn new(input: T) -> Self {
         let mut parser = Self {
             current_token: None,
             next_token: None,
             comments: vec![],
             lex_errors: vec![],
-            lexer,
+
+            tokens: input,
         };
 
         parser.step();
@@ -68,7 +69,7 @@ impl Parser {
         let mut next = None;
 
         loop {
-            match self.lexer.next() {
+            match self.tokens.next() {
                 Some(Ok((start, Token::Comment, end))) => {
                     self.comments.push(SrcSpan { start, end })
                 },
@@ -213,7 +214,7 @@ pub enum Precedence {
 }
 
 pub fn parse_module(src: &str) -> Result<Parsed, ParseError> {
-    let lexer = Lexer::new(src);
+    let lexer = Lexer::new(src.char_indices().map(|(i, c)| (i as u32, c)));
     let mut parser = Parser::new(lexer);
     let parsed = parser.parse()?;
     

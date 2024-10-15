@@ -19,7 +19,7 @@ fn test_numbers() -> std::result::Result<(), LexicalError> {
         1.5;
     "#;
 
-    let mut lexer = Lexer::new(input);
+    let mut lexer = Lexer::new(input.char_indices().map(|(i, c)| (i as u32, c)));
 
     let tokens = vec![
         Token::Int(String::from("10")),
@@ -78,12 +78,12 @@ fn test_invalid_numbers() -> std::result::Result<(), LexicalError> {
         1B6.F4h
         435.54o
         0101000.101b
-        1.2.3
+        1.2.
         10.e5
         .0e
     "#;
 
-    let mut lexer = Lexer::new(input);
+    let mut lexer = Lexer::new(input.char_indices().map(|(i, c)| (i as u32, c)));
 
     let fails = vec![
         LexicalErrorType::DigitOutOfRadix,
@@ -154,7 +154,7 @@ while (a > 5) a := a - 1;
 end
     "#;
 
-    let mut lexer = Lexer::new(input);
+    let mut lexer = Lexer::new(input.char_indices().map(|(i, c)| (i as u32, c)));
 
     let tokens = vec![
         Token::Begin,

@@ -25,7 +25,7 @@ pub fn start() -> std::io::Result<()> {
 			"" => {},
 			".exit" => return Ok(()),
 			_ => {
-				let mut parser = Parser::new(Lexer::new(input.as_str()));
+				let mut parser = Parser::new(Lexer::new(input.char_indices().map(|(i, c)| (i as u32, c))));
 
 				match parser.parse() {
                     Ok(parsed) => {

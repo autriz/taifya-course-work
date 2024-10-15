@@ -23,6 +23,7 @@ impl Label {
             file_id,
             (self.span.start as usize)..(self.span.end as usize),
         );
+
         match &self.text {
             None => label,
             Some(text) => label.with_message(text.clone()),

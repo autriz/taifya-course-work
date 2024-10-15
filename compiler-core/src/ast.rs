@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::{lexer::SrcSpan, parser::{parse_error, InfixParse, Parse, ParseErrorType, Precedence}, token::Token};
+use crate::{lexer::{LexResult, SrcSpan}, parser::{parse_error, InfixParse, Parse, ParseErrorType, Precedence}, token::Token};
 
 pub trait Postfix {
     fn postfix(&self) -> String;
@@ -25,9 +25,9 @@ pub struct Program {
     pub location: SrcSpan
 }
 
-impl Parse for Program {
+impl<T: Iterator<Item = LexResult>> Parse<T> for Program {
     fn parse(
-        parser: &mut crate::parser::Parser, 
+        parser: &mut crate::parser::Parser<T>, 
         _precedence: Option<Precedence>
     ) -> Result<Self, crate::parser::ParseError> {
         let (start, mut end) = parser.expect_one(Token::Begin)?;
@@ -117,9 +117,9 @@ pub enum Statement {
     Operator(Operator),
 }
 
-impl Parse for Statement {
+impl<T: Iterator<Item = LexResult>> Parse<T> for Statement {
     fn parse(
-        parser: &mut crate::parser::Parser, 
+        parser: &mut crate::parser::Parser<T>, 
         _precedence: Option<Precedence>
     ) -> Result<Self, crate::parser::ParseError> {
         let res = match parser.current_token {
@@ -217,9 +217,9 @@ pub struct Declaration {
     pub location: SrcSpan
 }
 
-impl Parse for Declaration {
+impl<T: Iterator<Item = LexResult>> Parse<T> for Declaration {
     fn parse(
-        parser: &mut crate::parser::Parser, 
+        parser: &mut crate::parser::Parser<T>, 
         _precedence: Option<Precedence>
     ) -> Result<Self, crate::parser::ParseError> {
         let (start, mut end) = parser.expect_one(Token::Var)?;
@@ -282,9 +282,9 @@ pub enum Operator {
     Output(Output),
 }
 
-impl Parse for Operator {
+impl<T: Iterator<Item = LexResult>> Parse<T> for Operator {
     fn parse(
-        parser: &mut crate::parser::Parser, 
+        parser: &mut crate::parser::Parser<T>, 
         _precedence: Option<Precedence>
     ) -> Result<Self, crate::parser::ParseError> {
         let res = match &parser.current_token {
@@ -363,9 +363,9 @@ pub struct Nested {
     pub location: SrcSpan
 }
 
-impl Parse for Nested {
+impl<T: Iterator<Item = LexResult>> Parse<T> for Nested {
     fn parse(
-        parser: &mut crate::parser::Parser, 
+        parser: &mut crate::parser::Parser<T>, 
         _precedence: Option<Precedence>
     ) -> Result<Self, crate::parser::ParseError> {
         let (start, mut end) = parser.expect_one(Token::Begin)?;
@@ -456,9 +456,9 @@ pub struct Assignment {
     pub location: SrcSpan
 }
 
-impl Parse for Assignment {
+impl<T: Iterator<Item = LexResult>> Parse<T> for Assignment {
     fn parse(
-        parser: &mut crate::parser::Parser,
+        parser: &mut crate::parser::Parser<T>,
         _precedence: Option<Precedence>
     ) -> Result<Self, crate::parser::ParseError> {
         // println!("assign");
@@ -505,9 +505,9 @@ pub struct Conditional {
     pub location: SrcSpan
 }
 
-impl Parse for Conditional {
+impl<T: Iterator<Item = LexResult>> Parse<T> for Conditional {
     fn parse(
-        parser: &mut crate::parser::Parser, 
+        parser: &mut crate::parser::Parser<T>, 
         _precedence: Option<Precedence>
     ) -> Result<Self, crate::parser::ParseError> {
         let (start, _) = parser.expect_one(Token::If)?;
@@ -586,9 +586,9 @@ pub struct FixedLoop {
     pub location: SrcSpan
 }
 
-impl Parse for FixedLoop {
+impl<T: Iterator<Item = LexResult>> Parse<T> for FixedLoop {
     fn parse(
-        parser: &mut crate::parser::Parser, 
+        parser: &mut crate::parser::Parser<T>, 
         _precedence: Option<Precedence>
     ) -> Result<Self, crate::parser::ParseError> {
         let (start, _) = parser.expect_one(Token::For)?;
@@ -648,9 +648,9 @@ pub struct ConditionalLoop {
     pub location: SrcSpan
 }
 
-impl Parse for ConditionalLoop {
+impl<T: Iterator<Item = LexResult>> Parse<T> for ConditionalLoop {
     fn parse(
-        parser: &mut crate::parser::Parser, 
+        parser: &mut crate::parser::Parser<T>, 
         _precedence: Option<Precedence>
     ) -> Result<Self, crate::parser::ParseError> {
         let (start, _) = parser.expect_one(Token::While)?;
@@ -692,9 +692,9 @@ pub struct Input {
     pub location: SrcSpan
 }
 
-impl Parse for Input {
+impl<T: Iterator<Item = LexResult>> Parse<T> for Input {
     fn parse(
-        parser: &mut crate::parser::Parser, 
+        parser: &mut crate::parser::Parser<T>, 
         _precedence: Option<Precedence>
     ) -> Result<Self, crate::parser::ParseError> {
         let (start, _) = parser.expect_one(Token::Readln)?;
@@ -743,9 +743,9 @@ pub struct Output {
     pub location: SrcSpan
 }
 
-impl Parse for Output {
+impl<T: Iterator<Item = LexResult>> Parse<T> for Output {
     fn parse(
-        parser: &mut crate::parser::Parser, 
+        parser: &mut crate::parser::Parser<T>, 
         _precedence: Option<Precedence>
     ) -> Result<Self, crate::parser::ParseError> {
         let (start, _) = parser.expect_one(Token::Writeln)?;
@@ -800,9 +800,9 @@ pub enum Expression {
     }
 }
 
-impl Parse for Expression {
+impl<T: Iterator<Item = LexResult>> Parse<T> for Expression {
     fn parse(
-        parser: &mut crate::parser::Parser, 
+        parser: &mut crate::parser::Parser<T>, 
         precedence: Option<Precedence>
     ) -> Result<Self, crate::parser::ParseError> {
         // println!("{:?}, {:?}", parser.current_token, parser.next_token);
@@ -935,9 +935,9 @@ pub struct Infix {
     pub location: SrcSpan
 }
 
-impl InfixParse for Infix {
+impl<T: Iterator<Item = LexResult>> InfixParse<T> for Infix {
     fn parse(
-        parser: &mut crate::parser::Parser, 
+        parser: &mut crate::parser::Parser<T>, 
         left: Expression, 
         _precedence: Option<Precedence>
     ) -> Result<Self, crate::parser::ParseError> {
@@ -994,9 +994,9 @@ pub struct Prefix {
     pub location: SrcSpan
 }
 
-impl Parse for Prefix {
+impl<T: Iterator<Item = LexResult>> Parse<T> for Prefix {
     fn parse(
-        parser: &mut crate::parser::Parser, 
+        parser: &mut crate::parser::Parser<T>, 
         _precedence: Option<Precedence>
     ) -> Result<Self, crate::parser::ParseError> {
         let (start, token, _) = parser.next_token().unwrap();
@@ -1045,9 +1045,9 @@ pub enum Primitive {
     }
 }
 
-impl Parse for Primitive {
+impl<T: Iterator<Item = LexResult>> Parse<T> for Primitive {
     fn parse(
-        parser: &mut crate::parser::Parser, 
+        parser: &mut crate::parser::Parser<T>, 
         _precedence: Option<Precedence>
     ) -> Result<Self, crate::parser::ParseError> {
         let span = parser.next_token();
