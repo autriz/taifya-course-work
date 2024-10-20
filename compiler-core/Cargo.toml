@@ -5,5 +5,7 @@ edition = "2021"
 
 [dependencies]
 thiserror = "1.0.64"
-termcolor = { workspace =  true }
+termcolor = { workspace = true }
+inkwell = { workspace = true }
+llvm-sys = { workspace = true }
 codespan-reporting = "0.11.1"

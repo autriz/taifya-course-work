@@ -4,6 +4,8 @@ members = ["compiler-cli", "compiler-core"]
 
 [workspace.dependencies]
 termcolor = "1.4.1"
+inkwell = { version = "0.5.0", features = ["llvm18-0"] }
+llvm-sys = "180"
 
 [profile.release]
 strip = true      # Automatically strip symbols from the binary.

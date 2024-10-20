@@ -2,7 +2,7 @@ use std::{path::PathBuf, rc::Rc};
 
 use crate::{analyzer::{ModuleAnalyzer, Outcome}, ast::Module, error::Error, parser::parse_module, warning::{TypeWarningEmitter, WarningEmitter, WarningEmitterIO}};
 
-pub fn compile(
+pub fn analyze(
     path: PathBuf,
     warnings: Rc<dyn WarningEmitterIO>,
 ) -> Result<Module, Error> {

@@ -331,7 +331,7 @@ impl<T: Iterator<Item = (u32, char)>> Lexer<T> {
 		}
 
 		loop {
-			println!("{:?}", self.ch);
+			// println!("{:?}", self.ch);
 			match self.ch {
 				Some(ch) if is_radix(ch) => {
 					value.push(self.next_char().unwrap());

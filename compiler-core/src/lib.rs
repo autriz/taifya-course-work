@@ -8,5 +8,7 @@ pub mod environment;
 pub mod error;
 pub mod warning;
 pub mod diagnostic;
+pub mod codegen;
+pub mod compiler;
 pub mod build;
 pub mod eval;
