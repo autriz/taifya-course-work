@@ -26,12 +26,12 @@ pub fn str_to_keyword(word: &str) -> Option<Token> {
 	})
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, PartialOrd, Eq)]
 pub enum NumberType {
-	Hex,
-	Int,
-	Octal,
 	Binary,
+	Octal,
+	Int,
+	Hex,
 	Float,
 }
 
@@ -341,7 +341,7 @@ impl<T: Iterator<Item = (u32, char)>> Lexer<T> {
 	
 						value.push(self.next_char().unwrap());
 					}
-				}
+				},
 				Some(ch) if ch.is_ascii_digit() => {
 					value.push(self.next_char().unwrap());
 				},

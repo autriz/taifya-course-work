@@ -356,8 +356,7 @@ fn get_infix_type(
         (true, true) => match (&left_type, &right_type) {
             (ValueType::Integer, ValueType::Integer)
             | (ValueType::Float, ValueType::Float)
-            | (ValueType::Boolean, ValueType::Boolean)
-            | (ValueType::String, ValueType::String) => left_type, 
+            | (ValueType::Boolean, ValueType::Boolean) => left_type, 
             _ => return Err(AnalyzeError::TypeMismatch { 
                 location: infix.right.location(), 
                 expected: left_type, 
@@ -388,12 +387,8 @@ fn get_infix_type(
             | Token::GreaterThan => ValueType::Boolean,
             _ => value_type
         },
-        ValueType::String => match infix.operator {
-            Token::Equal
-            | Token::NotEqual => ValueType::Boolean,
-            _ => value_type
-        },
-        ValueType::Boolean => value_type
+        ValueType::Boolean => value_type,
+        _ => unreachable!("String result should not be possible")
     };
 
     Ok(value_type)
@@ -417,7 +412,7 @@ fn get_allowed_types_for(operator: &Token) -> Vec<ValueType> {
     }
 
     match operator {
-        Token::Plus => vec![ValueType::Integer, ValueType::Float, ValueType::String],
+        Token::Plus => vec![ValueType::Integer, ValueType::Float],
         Token::Minus
         | Token::Asterisk
         | Token::Slash => vec![ValueType::Integer, ValueType::Float],
@@ -428,7 +423,7 @@ fn get_allowed_types_for(operator: &Token) -> Vec<ValueType> {
         Token::LessThanOrEqual
         | Token::GreaterThanOrEqual => vec![ValueType::Integer],
         Token::Equal
-        | Token::NotEqual => vec![ValueType::Integer, ValueType::Boolean, ValueType::String],
+        | Token::NotEqual => vec![ValueType::Integer, ValueType::Boolean],
         _ => unreachable!("This should not match")
     }
 }

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use inkwell::{basic_block::BasicBlock, builder::Builder, context::Context, module::Module, types::BasicTypeEnum, values::{BasicValue, BasicValueEnum, FunctionValue}, AddressSpace, IntPredicate};
+use inkwell::{basic_block::BasicBlock, builder::Builder, context::Context, module::Module, types::BasicTypeEnum, values::{BasicValue, BasicValueEnum, FunctionValue, InstructionOpcode}, AddressSpace, IntPredicate};
 use super::variable::Variable;
 
 use crate::{parser::prelude::{Declaration, Expression, IdentifierType, Operator, Primitive, Program, Statement}, lexer::prelude::Token};
@@ -59,17 +59,6 @@ impl<'a, 'ctx> Codegen<'a, 'ctx> {
     fn fn_value(&self) -> FunctionValue<'ctx> {
         self.fn_value_opt.unwrap()
     }
-
-    // pub fn build_load(&self, ptr: PointerValue<'ctx>, name: &str, name_type: &IdentifierType) -> BasicValueEnum<'ctx> {
-    //     let type_ = match name_type {
-    //         IdentifierType::Int => self.context.i64_type().as_basic_type_enum(),
-    //         IdentifierType::Float => self.context.i64_type().as_basic_type_enum(),
-    //         IdentifierType::Bool => self.context.i64_type().as_basic_type_enum(),
-    //         IdentifierType::String => self.context.i8_type().array_type(0).as_basic_type_enum()
-    //     };
-
-    //     self.builder.build_load(type_, ptr, name).unwrap()
-    // }
 
     fn get_basic_type(&self, var_type: IdentifierType) -> BasicTypeEnum<'ctx> {
         match var_type {
@@ -240,19 +229,20 @@ impl<'a, 'ctx> Codegen<'a, 'ctx> {
             },
             Operator::ConditionalLoop(loop_) => {
                 let parent = self.fn_value();
-                let one_const = self.context.i64_type().const_int(1, false);
-
+                let true_const = self.context.bool_type().const_int(1, false);
+                
+                let before_block = self.context.append_basic_block(parent, "while_before");
                 let loop_block = self.context.append_basic_block(parent, "while");
                 let after_block = self.context.append_basic_block(parent, "while_after");
-
-                self.builder.build_unconditional_branch(loop_block).unwrap();
-                self.builder.position_at_end(loop_block);
+                
+                self.builder.build_unconditional_branch(before_block).unwrap();
+                self.builder.position_at_end(before_block);
 
                 let condition = self.compile_expression(&loop_.condition).unwrap();
                 let condition = self.builder.build_int_compare(
                     IntPredicate::EQ, 
                     condition.into_int_value(), 
-                    one_const, 
+                    true_const, 
                     "while_cond"
                 ).unwrap();
 
@@ -262,7 +252,15 @@ impl<'a, 'ctx> Codegen<'a, 'ctx> {
                     after_block
                 ).unwrap();
 
+                self.builder.position_at_end(loop_block);
+
                 self.compile_operator(&loop_.block);
+
+                if let Some(last_instruction) = loop_block.get_last_instruction() {
+                    if last_instruction.get_opcode() != InstructionOpcode::Return {
+                        self.builder.build_unconditional_branch(before_block).unwrap();
+                    }
+                }
 
                 self.builder.position_at_end(after_block);
             },
@@ -442,10 +440,6 @@ impl<'a, 'ctx> Codegen<'a, 'ctx> {
                             _ => return Err("Invalid operator")
                         }
                     }),
-                    // assume string
-                    BasicTypeEnum::ArrayType(_) => {
-                        todo!("string infix")
-                    },
                     _ => return Err("Invalid infix operation")
                 }
             },
@@ -549,7 +543,7 @@ impl<'a, 'ctx> Codegen<'a, 'ctx> {
 mod test {
     use std::path::Path;
 
-    use inkwell::{context::Context, targets::{InitializationConfig, Target, TargetMachine}, types::PointerType, values::PointerValue, AddressSpace};
+    use inkwell::{context::Context, targets::{InitializationConfig, Target, TargetMachine}};
 
     use crate::parser::prelude::parse_module;
 
@@ -621,163 +615,5 @@ mod test {
         ).unwrap();
 
         println!("{}", module.print_to_string().to_string());
-    }
-
-    #[test]
-    fn test_string() {
-        // Создаем контекст
-        let context = Context::create();
-        let module = context.create_module("string_example");
-
-        // Создаем типы
-        let i8_type = context.i8_type();
-        let i32_type = context.i32_type();
-        let string_length = 13; // Длина строки "Hello, World!"
-
-        // Создаем массив символов для строки
-        let string_type: PointerType = i8_type.array_type(string_length).ptr_type(AddressSpace::default());
-
-        // Создаем строку "Hello, World!"
-        let hello_world = context.const_string(b"Hello, World!", true);
-
-        // Добавляем строку в модуль
-        let string_value = module.add_global(string_type, None, "hello");
-        string_value.set_initializer(&hello_world);
-
-        // Создаем функцию для вывода строки
-        let void_type = context.void_type();
-        let fn_type = void_type.fn_type(&[], false);
-        let function = module.add_function("main", fn_type, None);
-
-        let entry = context.append_basic_block(function, "entry");
-        let builder = context.create_builder();
-
-        builder.position_at_end(entry);
-
-        // Загрузка указателя на строку для передачи в функцию printf
-        let printf_type = context.i32_type().fn_type(&[string_type.into()], false);
-        let printf_func = module.add_function("printf", printf_type, None);
-
-        let string_ptr: PointerValue = string_value.as_pointer_value();
-
-        // Вызов функции printf
-        builder.build_call(printf_func, &[string_ptr.into()], "call_printf");
-
-        // Завершение функции
-        builder.build_return(None);
-
-        // Генерация LLVM IR
-        module.print_to_stderr();
-
-        Target::initialize_all(&InitializationConfig::default());
-        let target_triple = TargetMachine::get_default_triple();
-        // println!("{target_triple:?}");
-        let target = Target::from_triple(&target_triple).unwrap();
-        // println!("{target:?}");
-        let target_machine = target.create_target_machine(
-            &target_triple, 
-            "generic", 
-            "", 
-            inkwell::OptimizationLevel::None, 
-            inkwell::targets::RelocMode::PIC, 
-            inkwell::targets::CodeModel::Default
-        ).unwrap();
-        // println!("{target_machine:?}");
-
-        module.set_data_layout(&target_machine.get_target_data().get_data_layout());
-        module.set_triple(&target_triple);
-        
-        let out_file = "hohiho1.o";
-        // let buf = target_machine.write_to_memory_buffer(
-        //     &module, 
-        //     inkwell::targets::FileType::Object
-        // ).unwrap();
-        target_machine.write_to_file(
-            &module, 
-            inkwell::targets::FileType::Object, 
-            Path::new(&out_file.to_string())
-        ).unwrap();
-    }
-
-    #[test]
-    fn test_string2() {
-        // Создаем контекст
-        let context = Context::create();
-        let module = context.create_module("stack_string_example");
-
-        // Создаем типы
-        let i8_type = context.i8_type();
-        let i32_type = context.i32_type();
-
-        // Создание новой функции с возвращаемым значением int
-        let fn_type = i32_type.fn_type(&[], false);
-        let function = module.add_function("main", fn_type, None);
-
-        let entry = context.append_basic_block(function, "entry");
-        let builder = context.create_builder();
-        builder.position_at_end(entry);
-
-        // Создаем строку на стеке
-        let hello_str = context.const_string(b"Hello", true);
-        let hello_ptr = builder.build_alloca(
-            i8_type.array_type(6), 
-            "hello_stack"
-        ).unwrap();
-        builder.build_store(hello_ptr, hello_str);
-
-        // Подготовка для вызова printf
-        let printf_type = context.i32_type().fn_type(
-            &[context.ptr_type(AddressSpace::default()).into()], 
-            true
-        );
-        let printf_func = module.add_function("printf", printf_type, None);
-        
-        // Вызов printf
-        let format_str = context.const_string(b"%s\n", true);
-        let format_ptr = builder.build_alloca(
-            i8_type.array_type(4), 
-            "format"
-        ).unwrap();
-        builder.build_store(format_ptr, format_str);
-
-        let args = [
-            format_ptr.into(),
-            hello_ptr.into()
-        ];
-        builder.build_call(printf_func, &args, "call_printf");
-
-        builder.build_return(Some(&i32_type.const_int(0, false)));
-
-        // Генерация IR-кода
-        module.print_to_stderr();
-
-        Target::initialize_all(&InitializationConfig::default());
-        let target_triple = TargetMachine::get_default_triple();
-        // println!("{target_triple:?}");
-        let target = Target::from_triple(&target_triple).unwrap();
-        // println!("{target:?}");
-        let target_machine = target.create_target_machine(
-            &target_triple, 
-            "generic", 
-            "", 
-            inkwell::OptimizationLevel::None, 
-            inkwell::targets::RelocMode::PIC, 
-            inkwell::targets::CodeModel::Default
-        ).unwrap();
-        // println!("{target_machine:?}");
-
-        module.set_data_layout(&target_machine.get_target_data().get_data_layout());
-        module.set_triple(&target_triple);
-        
-        let out_file = "hohiho2.o";
-        // let buf = target_machine.write_to_memory_buffer(
-        //     &module, 
-        //     inkwell::targets::FileType::Object
-        // ).unwrap();
-        target_machine.write_to_file(
-            &module, 
-            inkwell::targets::FileType::Object, 
-            Path::new(&out_file.to_string())
-        ).unwrap();
     }
 }

@@ -1,6 +1,7 @@
+use core::str;
 use std::{path::Path, process::Command};
 
-use inkwell::{module::Module, targets::{CodeModel, InitializationConfig, RelocMode, Target, TargetMachine}, OptimizationLevel};
+use inkwell::{module::Module, passes::PassBuilderOptions, targets::{CodeModel, InitializationConfig, RelocMode, Target, TargetMachine}, OptimizationLevel};
 
 pub struct ObjectCompiler;
 pub struct ObjectLinker;
@@ -32,6 +33,15 @@ impl ObjectCompiler {
         //     &module, 
         //     inkwell::targets::FileType::Object
         // ).unwrap();
+        // let assembly = target_machine.write_to_memory_buffer(
+        //     &module, 
+        //     inkwell::targets::FileType::Assembly
+        // ).unwrap();
+
+        // let str = str::from_utf8(assembly.as_slice()).unwrap();
+
+        // println!("{}", str);
+
         target_machine.write_to_file(
             &module, 
             inkwell::targets::FileType::Object, 

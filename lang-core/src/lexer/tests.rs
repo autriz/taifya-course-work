@@ -69,8 +69,29 @@ fn test_numbers() -> std::result::Result<(), LexicalError> {
 }
 
 #[test]
+fn test_long_numbers() -> std::result::Result<(), LexicalError> {
+    let input1 = "12345678909876543232345679434657905454754354605749746756535353453453234567890987654323234567943465790545475435460574974675653535345345323456789098765432323456794346579054547543546057497467565353534534532345678909876543232345679434657905454754354605749746756535353453453;";
+    let input2 = "0DEABCFBCFADECFBDEACBFEACFBDACBFADECBFAEDCFBDECFBEDCFBADEACFBEDBCFEADBCFAEDBCFDAECBFDAECFBADBECFDAECFBADCEFBAEDCFBBDCFAECBFDEAFBCEDACFBDAECBFEDABCFEDACFBEDABCFDAEBCFADEBCFADECBFDECBFDEABCFAEDBCFEDACFBDEABCFAEDCFBCAEDFBBCFADECBFAEDCFBAEDBCFEDABCFAEDCFBADECFBAEDCFBAEDCFB;";
+
+    let mut lexer1 = Lexer::new(input1.char_indices().map(|(i, c)| (i as u32, c)));
+    let mut lexer2 = Lexer::new(input2.char_indices().map(|(i, c)| (i as u32, c)));
+
+    let start = std::time::Instant::now();
+    let _ = lexer1.next_token();
+    println!("1: {}us", (std::time::Instant::now() - start).as_micros());
+
+    let start = std::time::Instant::now();
+    let _ = lexer2.next_token();
+    println!("2: {}us", (std::time::Instant::now() - start).as_micros());
+
+    Ok(())
+}
+
+#[test]
 fn test_invalid_numbers() -> std::result::Result<(), LexicalError> {
     let input = r#"
+        1.eh
+        1e+5e
         123b
         789o
         1A3
@@ -85,6 +106,8 @@ fn test_invalid_numbers() -> std::result::Result<(), LexicalError> {
     let mut lexer = Lexer::new(input.char_indices().map(|(i, c)| (i as u32, c)));
 
     let fails = vec![
+        LexicalErrorType::UnsupportedFloatingPoint,
+        LexicalErrorType::DigitOutOfRadix,
         LexicalErrorType::DigitOutOfRadix,
         LexicalErrorType::DigitOutOfRadix,
         LexicalErrorType::DigitOutOfRadix,

@@ -10,11 +10,7 @@ use clap::Parser;
 use cli::{print_analyzed, print_analyzing, print_compiled, print_compiling};
 use inkwell::context::Context;
 use lang_core::{
-    analyzer::analyze, 
-    codegen::prelude::Codegen,
-    environment::prelude::Environment, 
-    eval::eval, 
-    utils::prelude::{Warning, WarningEmitterIO}
+    analyzer::analyze, codegen::prelude::Codegen, environment::prelude::Environment, eval::eval, utils::prelude::{Warning, WarningEmitterIO}
 };
 
 #[derive(Parser)]
@@ -126,6 +122,8 @@ fn main() {
                 &module,
                 &analyzed.program
             );
+
+            println!("{}", module.to_string());
 
             let output = match output {
                 Some(output) => output,
