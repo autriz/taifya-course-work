@@ -115,8 +115,6 @@ impl<'a, 'ctx> Codegen<'a, 'ctx> {
                 let value = self.compile_expression(&assign.value).unwrap();
                 let variable = self.variables.get(name).expect("Variable should be defined");
 
-                println!("{value}");
-
                 self.builder.build_store(variable.pointer, value).unwrap();
             },
             Operator::Nested(nested) => {
@@ -513,8 +511,6 @@ impl<'a, 'ctx> Codegen<'a, 'ctx> {
         }
 
         self.builder.build_return(Some(&self.context.i32_type().const_zero())).unwrap();
-        
-        println!("{}", self.module.to_string());
 
         if function.verify(true) {
             Ok(function)
