@@ -194,18 +194,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7943c866cc5cd64cbc25b2e01621d07fa8eb2a1a23160ee81ce38704e97b8ecf"
 
 [[package]]
-name = "lang"
-version = "0.1.0"
-dependencies = [
- "clap",
- "ctrlc",
- "inkwell",
- "lang-core",
- "llvm-sys",
- "termcolor",
-]
-
-[[package]]
 name = "lang-core"
 version = "0.1.0"
 dependencies = [
@@ -214,6 +202,18 @@ dependencies = [
  "llvm-sys",
  "termcolor",
  "thiserror",
+]
+
+[[package]]
+name = "langc"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "ctrlc",
+ "inkwell",
+ "lang-core",
+ "llvm-sys",
+ "termcolor",
 ]
 
 [[package]]

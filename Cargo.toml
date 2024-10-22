@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["compiler-cli", "compiler-core"]
+members = ["langc", "lang-core"]
 
 [workspace.dependencies]
 termcolor = "1.4.1"

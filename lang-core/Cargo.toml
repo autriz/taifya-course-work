@@ -1,0 +1,12 @@
+[package]
+name = "lang-core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+codespan-reporting = "0.11.1"
+thiserror = "1.0.64"
+
+termcolor = { workspace = true }
+inkwell = { workspace = true }
+llvm-sys = { workspace = true }
