@@ -12,6 +12,14 @@ pub(crate) fn print_analyzed(duration: Duration) {
     print_colourful_prefix("Analyzed", &format!("in {}", seconds(duration)))
 }
 
+pub(crate) fn print_compiling(text: &str) {
+    print_colourful_prefix("Compiling", text);
+}
+
+pub(crate) fn print_compiled(duration: Duration) {
+    print_colourful_prefix("Compiled", &format!("in {}", seconds(duration)));
+}
+
 pub fn seconds(duration: Duration) -> String {
     format!("{:.2}s", duration.as_millis() as f32 / 1000.)
 }

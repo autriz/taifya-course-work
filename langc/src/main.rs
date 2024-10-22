@@ -7,7 +7,7 @@ use compiler::{ObjectCompiler, ObjectLinker};
 use std::{cell::RefCell, path::PathBuf, rc::Rc};
 
 use clap::Parser;
-use cli::{print_analyzed, print_analyzing};
+use cli::{print_analyzed, print_analyzing, print_compiled, print_compiling};
 use inkwell::context::Context;
 use lang_core::{
     analyzer::analyze, 
@@ -117,6 +117,9 @@ fn main() {
             let builder = context.create_builder();
             let module = context.create_module(path.clone().file_name().unwrap().to_str().unwrap());
 
+            print_compiling(path.to_str().unwrap());
+            let start = std::time::Instant::now();
+
             let _ = Codegen::compile(
                 &context,
                 &builder,
@@ -151,6 +154,8 @@ fn main() {
             ).unwrap();
 
             let _ = std::fs::remove_file(obj_file);
+
+            print_compiled(std::time::Instant::now() - start);
         }
         Command::Rlpl => {
             let _  = rlpl::start();

@@ -3,5 +3,12 @@ begin
 
     hello := "Hello world!";
 
+    writeln hello, " :)";
+    writeln hello, " :)";
+    writeln hello, " :)";
+    writeln hello, " :)";
+    writeln hello, " :)";
+    writeln hello, " :)";
+    writeln hello, " :)";
     writeln hello, " :)"
 end
