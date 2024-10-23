@@ -45,7 +45,6 @@ pub enum Token {
 
     // Типы данных
     Percent, // %
-    At, // @
     Dollar, // $
 
     // Ключевые слова
@@ -100,7 +99,6 @@ impl Token {
     pub fn is_variable_type(&self) -> bool {
         match self {
             Token::Percent | 
-            Token::At | 
             Token::Dollar | 
             Token::Bang => true,
             _ => false,
@@ -172,7 +170,6 @@ impl Token {
             Token::Bang => "!".to_string(),
             Token::Assign => ":=".to_string(),
             Token::Percent => "%".to_string(),
-            Token::At => "@".to_string(),
             Token::Dollar => "$".to_string(),
             Token::Var => "var".to_string(),
             Token::Begin => "begin".to_string(),

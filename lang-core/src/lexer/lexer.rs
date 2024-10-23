@@ -133,7 +133,6 @@ impl<T: Iterator<Item = (u32, char)>> Lexer<T> {
 				},
 				',' => self.eat_one_char(Token::Comma),
 				'%' => self.eat_one_char(Token::Percent),
-				'@' => self.eat_one_char(Token::At),
 				'$' => self.eat_one_char(Token::Dollar),
 				'+' => self.eat_one_char(Token::Plus),
 				'-' => self.eat_one_char(Token::Minus),
@@ -275,7 +274,7 @@ impl<T: Iterator<Item = (u32, char)>> Lexer<T> {
 
 	fn lex_number(&mut self) -> LexResult {
 		let start_pos = self.position;
-
+		
 		let mut value = String::from("");
 
 		let mut has_period = false;
@@ -283,20 +282,6 @@ impl<T: Iterator<Item = (u32, char)>> Lexer<T> {
 		let mut has_exponent = false;
 		let mut has_number_before_exponent = false;
 		let mut has_number_after_exponent = false;
-
-		fn is_ascii_hexalpha(ch: char) -> bool { 
-			match ch {
-				'a'..='f' | 'A'..='F' => true, 
-				_ => false 
-			}
-		}
-
-		fn is_exponent(ch: char) -> bool {
-			match ch {
-				'e' | 'E' => true,
-				_ => false
-			}
-		}
 
 		fn is_radix(ch: char) -> bool {
 			match ch {
@@ -311,11 +296,11 @@ impl<T: Iterator<Item = (u32, char)>> Lexer<T> {
 		loop {
 			// println!("{:?}", self.ch);
 			match self.ch {
-				Some(ch) if is_radix(ch) => {
+				Some(ch) if ch.is_ascii_digit() => {
 					value.push(self.next_char().unwrap());
 				},
-				Some(ch) if is_ascii_hexalpha(ch) => {
-					if !has_exponent && is_exponent(ch) {
+				Some(ch) if matches!(ch, 'a'..='f' | 'A'..='F') => {
+					if !has_exponent && matches!(ch, 'e' | 'E') {
 						has_number_before_exponent = value.chars()
 							.nth(value.len() - 1)
 							.unwrap()
@@ -325,9 +310,8 @@ impl<T: Iterator<Item = (u32, char)>> Lexer<T> {
 
 						value.push(self.next_char().unwrap());
 
-						match self.ch {
-							Some('+') | Some('-') => { value.push(self.next_char().unwrap()); },
-							_ => {}
+						if matches!(self.ch, Some('+') | Some('-')) {
+							value.push(self.next_char().unwrap());
 						}
 
 						has_number_after_exponent = match self.ch {
@@ -342,7 +326,7 @@ impl<T: Iterator<Item = (u32, char)>> Lexer<T> {
 						value.push(self.next_char().unwrap());
 					}
 				},
-				Some(ch) if ch.is_ascii_digit() => {
+				Some(ch) if is_radix(ch) => {
 					value.push(self.next_char().unwrap());
 				},
 				Some(ch) if ch == '.' => {
@@ -372,7 +356,6 @@ impl<T: Iterator<Item = (u32, char)>> Lexer<T> {
 		let expected_type = match last_char {
 			'B' | 'b' => NumberType::Binary,
 			'O' | 'o' => NumberType::Octal,
-			'D' | 'd' => NumberType::Int,
 			'H' | 'h' => NumberType::Hex,
 			_ if has_period || has_exponent => {
 				if has_exponent {
@@ -392,7 +375,7 @@ impl<T: Iterator<Item = (u32, char)>> Lexer<T> {
 
 				NumberType::Float
 			},
-			_ => NumberType::Int
+			'D' | 'd' | _ => NumberType::Int
 		};
 
 		if is_radix(last_char) {

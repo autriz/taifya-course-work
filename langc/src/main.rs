@@ -15,17 +15,33 @@ use lang_core::{
 
 #[derive(Parser)]
 enum Command {
+    /// Performs lexical, syntactical and semantical analysis
     Analyze {
         path: PathBuf,
     },
+    /// Performs lexical, syntactical and semantical analysis
+    /// and runs it in interpreter mode
     Run {
         path: PathBuf,
     },
+    /// Performs lexical, syntactical and semantical analysis
+    /// and compiles it in executable file
     Compile {
+        /// Path of source file
         path: PathBuf,
+        /// Path of executable file
+        #[arg(short, long)]
         output: Option<PathBuf>,
+        /// Leave object file after compilation [default: false]
+        #[arg(long, default_value_t = false)]
+        obj: bool,
+        /// Return assembly code [default: false]
+        #[arg(long, default_value_t = false)]
+        assembly: bool,
     },
+    /// Runs Read Lex Print Loop
     Rlpl,
+    /// Runs Read Parse Print Loop
     Rppl
 }
 
@@ -85,7 +101,9 @@ fn main() {
         },
         Command::Compile { 
             path, 
-            output 
+            output ,
+            obj,
+            assembly
         } => {
             let warning_emitter = Rc::new(ConsoleWarningEmitter);
 
@@ -123,35 +141,53 @@ fn main() {
                 &analyzed.program
             );
 
-            println!("{}", module.to_string());
+            // println!("{}", module.to_string());
 
             let output = match output {
                 Some(output) => output,
                 None => PathBuf::from(path.file_name().unwrap().to_str().unwrap())
             };
 
-            let mut obj_file = output.clone();
-            obj_file.set_extension("o");
-            let obj_file = obj_file.as_os_str().to_str().unwrap();
+            if !assembly {
+                let mut obj_file = output.clone();
+                obj_file.set_extension("o");
+                let obj_file = obj_file.as_os_str().to_str().unwrap();
+    
+                ObjectCompiler::compile(
+                    inkwell::OptimizationLevel::Default, 
+                    inkwell::targets::RelocMode::PIC, 
+                    inkwell::targets::CodeModel::Default, 
+                    &module, 
+                    inkwell::targets::FileType::Object,
+                    &obj_file,
+                );
+    
+                let mut exe_file = output.clone();
+                exe_file.set_extension("");
+                let exe_file = exe_file.as_os_str().to_str().unwrap();
+    
+                ObjectLinker::link(
+                    obj_file,
+                    exe_file
+                ).unwrap();
+    
+                if !obj {
+                    let _ = std::fs::remove_file(obj_file);
+                }
+            } else {
+                let mut asm_file = output.clone();
+                asm_file.set_extension("asm");
+                let asm_file = asm_file.as_os_str().to_str().unwrap();
 
-            ObjectCompiler::compile(
-                inkwell::OptimizationLevel::Default, 
-                inkwell::targets::RelocMode::PIC, 
-                inkwell::targets::CodeModel::Default, 
-                &module, 
-                &obj_file
-            );
-
-            let mut exe_file = output.clone();
-            exe_file.set_extension("");
-            let exe_file = exe_file.as_os_str().to_str().unwrap();
-
-            ObjectLinker::link(
-                obj_file,
-                exe_file
-            ).unwrap();
-
-            let _ = std::fs::remove_file(obj_file);
+                ObjectCompiler::compile(
+                    inkwell::OptimizationLevel::Default, 
+                    inkwell::targets::RelocMode::PIC, 
+                    inkwell::targets::CodeModel::Default, 
+                    &module, 
+                    inkwell::targets::FileType::Assembly,
+                    &asm_file,
+                );
+            }
 
             print_compiled(std::time::Instant::now() - start);
         }

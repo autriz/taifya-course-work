@@ -183,7 +183,6 @@ impl Postfix for Identifiers {
 // type -> @ | ! | % | $
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum IdentifierType {
-    String, // @
     Float, // !
     Int, // %
     Bool // $
@@ -192,7 +191,6 @@ pub enum IdentifierType {
 impl Display for IdentifierType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let ident_type = match self {
-            Self::String => "@",
             Self::Float => "!",
             Self::Int => "%",
             Self::Bool => "$"
@@ -205,7 +203,6 @@ impl Display for IdentifierType {
 impl From<Token> for IdentifierType {
     fn from(value: Token) -> Self {
         match value {
-            Token::At => Self::String,
             Token::Bang => Self::Float,
             Token::Percent => Self::Int,
             Token::Dollar => Self::Bool,

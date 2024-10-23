@@ -72,17 +72,28 @@ fn test_numbers() -> std::result::Result<(), LexicalError> {
 fn test_long_numbers() -> std::result::Result<(), LexicalError> {
     let input1 = "12345678909876543232345679434657905454754354605749746756535353453453234567890987654323234567943465790545475435460574974675653535345345323456789098765432323456794346579054547543546057497467565353534534532345678909876543232345679434657905454754354605749746756535353453453;";
     let input2 = "0DEABCFBCFADECFBDEACBFEACFBDACBFADECBFAEDCFBDECFBEDCFBADEACFBEDBCFEADBCFAEDBCFDAECBFDAECFBADBECFDAECFBADCEFBAEDCFBBDCFAECBFDEAFBCEDACFBDAECBFEDABCFEDACFBEDABCFDAEBCFADEBCFADECBFDECBFDEABCFAEDBCFEDACFBDEABCFAEDCFBCAEDFBBCFADECBFAEDCFBAEDBCFEDABCFAEDCFBADECFBAEDCFBAEDCFB;";
+    
+    let mut times1 = vec![];
+    let mut times2 = vec![];
 
-    let mut lexer1 = Lexer::new(input1.char_indices().map(|(i, c)| (i as u32, c)));
-    let mut lexer2 = Lexer::new(input2.char_indices().map(|(i, c)| (i as u32, c)));
+    for _ in 0..1000000 {
+        let mut lexer1 = Lexer::new(input1.char_indices().map(|(i, c)| (i as u32, c)));
+        
+        let start = std::time::Instant::now();
+        let _ = lexer1.next_token();
+        times1.push((std::time::Instant::now() - start).as_nanos());
+    }
+    println!("1: {}ns", times1.iter().sum::<u128>() / times1.len() as u128);
 
-    let start = std::time::Instant::now();
-    let _ = lexer1.next_token();
-    println!("1: {}us", (std::time::Instant::now() - start).as_micros());
+    for _ in 0..1000000 {
+        let mut lexer2 = Lexer::new(input2.char_indices().map(|(i, c)| (i as u32, c)));
+        
+        let start = std::time::Instant::now();
+        let _ = lexer2.next_token();
+        times2.push((std::time::Instant::now() - start).as_nanos());
+    }
+    println!("2: {}ns", times1.iter().sum::<u128>() / times1.len() as u128);
 
-    let start = std::time::Instant::now();
-    let _ = lexer2.next_token();
-    println!("2: {}us", (std::time::Instant::now() - start).as_micros());
 
     Ok(())
 }
@@ -140,22 +151,20 @@ fn test_invalid_numbers() -> std::result::Result<(), LexicalError> {
 #[test]
 fn test_input() -> std::result::Result<(), LexicalError> {
     let input = r#"begin
-var a: %;
-var b: @;
-var c: $;
-var d: !;
+var a: %;;
+var b: $;;
+var c: !;;
 
 a := 10;
-b := "hello, world!";
-c := false;
-d := 10.54;
+b := false;
+c := 10.54;
 
 (*
     multiline
     comment
 *)
 
-a + d;
+a + c;
 10 - 5;
 .5 / 5.0;
 2.104e5 * 2;
@@ -186,23 +195,20 @@ end
         Token::Colon,
         Token::Percent,
         Token::Semicolon,
+        Token::Semicolon,
 
         Token::Var,
         Token::Ident(String::from("b")),
         Token::Colon,
-        Token::At,
+        Token::Dollar,
+        Token::Semicolon,
         Token::Semicolon,
 
         Token::Var,
         Token::Ident(String::from("c")),
         Token::Colon,
-        Token::Dollar,
-        Token::Semicolon,
-
-        Token::Var,
-        Token::Ident(String::from("d")),
-        Token::Colon,
         Token::Bang,
+        Token::Semicolon,
         Token::Semicolon,
 
         Token::Ident(String::from("a")),
@@ -212,15 +218,10 @@ end
 
         Token::Ident(String::from("b")),
         Token::Assign,
-        Token::String(String::from("hello, world!")),
-        Token::Semicolon,
-
-        Token::Ident(String::from("c")),
-        Token::Assign,
         Token::False,
         Token::Semicolon,
 
-        Token::Ident(String::from("d")),
+        Token::Ident(String::from("c")),
         Token::Assign,
         Token::Float(String::from("10.54")),
         Token::Semicolon,

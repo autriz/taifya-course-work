@@ -1,7 +1,7 @@
 use core::str;
 use std::{path::Path, process::Command};
 
-use inkwell::{module::Module, passes::PassBuilderOptions, targets::{CodeModel, InitializationConfig, RelocMode, Target, TargetMachine}, OptimizationLevel};
+use inkwell::{module::Module, targets::{CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine}, OptimizationLevel};
 
 pub struct ObjectCompiler;
 pub struct ObjectLinker;
@@ -12,6 +12,7 @@ impl ObjectCompiler {
         reloc_mode: RelocMode,
         code_model: CodeModel,
         module: &Module,
+        file_type: FileType,
         out: &str,
     ) {
         Target::initialize_all(&InitializationConfig::default());
@@ -44,7 +45,7 @@ impl ObjectCompiler {
 
         target_machine.write_to_file(
             &module, 
-            inkwell::targets::FileType::Object, 
+            file_type, 
             Path::new(out)
         ).unwrap();
     }

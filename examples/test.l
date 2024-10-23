@@ -1,9 +1,5 @@
 begin
-    var a, b: %;
-        e: @;;
-
-    e := "Hi";
-    writeln "Value: ", e;
+    var a, b: %;;
 
     b := 5;
 

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use inkwell::{basic_block::BasicBlock, builder::Builder, context::Context, module::Module, types::BasicTypeEnum, values::{BasicValue, BasicValueEnum, FunctionValue, InstructionOpcode}, AddressSpace, IntPredicate};
+use inkwell::{basic_block::BasicBlock, builder::Builder, context::Context, module::Module, types::BasicTypeEnum, values::{BasicValue, BasicValueEnum, FunctionValue, InstructionOpcode, PointerValue}, AddressSpace, IntPredicate};
 use super::variable::Variable;
 
 use crate::{parser::prelude::{Declaration, Expression, IdentifierType, Operator, Primitive, Program, Statement}, lexer::prelude::Token};
@@ -50,6 +50,8 @@ pub struct Codegen<'a, 'ctx> {
     variables: HashMap<String, Variable<'ctx>>,
     fn_value_opt: Option<FunctionValue<'ctx>>,
 
+    global_strings: HashMap<String, PointerValue<'ctx>>,
+
     // built-in functions
     printf_fn: FunctionValue<'ctx>,
     scanf_fn: FunctionValue<'ctx>,
@@ -65,7 +67,7 @@ impl<'a, 'ctx> Codegen<'a, 'ctx> {
             IdentifierType::Int => self.context.i64_type().into(),
             IdentifierType::Float => self.context.f64_type().into(),
             IdentifierType::Bool => self.context.bool_type().into(),
-            IdentifierType::String => self.context.ptr_type(AddressSpace::default()).into()
+            // IdentifierType::String => self.context.ptr_type(AddressSpace::default()).into()
         }
     }
 
@@ -127,18 +129,24 @@ impl<'a, 'ctx> Codegen<'a, 'ctx> {
                     match &variable.var_type {
                         IdentifierType::Int => "%ld",
                         IdentifierType::Float => "%lf",
-                        IdentifierType::Bool => "%d",
-                        IdentifierType::String => "%s"
+                        IdentifierType::Bool => "%d"
                     }
                 }).collect::<Vec<&str>>();
 
                 let formatted_string = formatted_string.join(", ");
 
-                let value = unsafe {
-                    self.builder.build_global_string(&formatted_string, "").unwrap()
+                let string_ptr = match self.global_strings.get(&formatted_string) {
+                    Some(string_ptr) => *string_ptr,
+                    None => {
+                        let _ = self.global_strings.insert(formatted_string.to_string(), unsafe {
+                            self.builder.build_global_string(&formatted_string, "").unwrap().as_pointer_value()
+                        });
+
+                        *self.global_strings.get(&formatted_string).unwrap()
+                    }
                 };
 
-                let mut args = vec![value.as_basic_value_enum().into()];
+                let mut args = vec![string_ptr.into()];
                 args.append(&mut identifiers);
 
                 let _ = self.builder.build_direct_call(
@@ -167,12 +175,18 @@ impl<'a, 'ctx> Codegen<'a, 'ctx> {
 
                 let formatted_string = format!("{}\n", formatted_string.join(""));
 
-                let value = self.builder.build_global_string_ptr(
-                    &formatted_string, 
-                    "fmt_string"
-                ).unwrap();
+                let string_ptr = match self.global_strings.get(&formatted_string) {
+                    Some(string_ptr) => *string_ptr,
+                    None => {
+                        let _ = self.global_strings.insert(formatted_string.to_string(), unsafe {
+                            self.builder.build_global_string(&formatted_string, "").unwrap().as_pointer_value()
+                        });
 
-                let mut args = vec![value.as_pointer_value().into()];
+                        *self.global_strings.get(&formatted_string).unwrap()
+                    }
+                };
+
+                let mut args = vec![string_ptr.into()];
                 args.append(&mut expressions);
 
                 let _ = self.builder.build_direct_call(
@@ -468,10 +482,16 @@ impl<'a, 'ctx> Codegen<'a, 'ctx> {
                     // let value = unsafe {
                     //     self.builder.build_global_string(value.as_str(), "").unwrap()
                     // };
-                    let string = self.builder.build_global_string_ptr(
-                        value, 
-                        "str"
-                    ).unwrap();
+                    let string_ptr = match self.global_strings.get(value) {
+                        Some(string_ptr) => *string_ptr,
+                        None => {
+                            let _ = self.global_strings.insert(value.to_string(), unsafe {
+                                self.builder.build_global_string(value, "").unwrap().as_pointer_value()
+                            });
+
+                            *self.global_strings.get(value).unwrap()
+                        }
+                    };
                     // let ptr = self.builder.build_alloca(
                     //     self.context.i8_type().array_type(value.len() as u32),
                     //     ""
@@ -480,7 +500,7 @@ impl<'a, 'ctx> Codegen<'a, 'ctx> {
 
                     // self.builder.build_global_string_ptr(value, name)
 
-                    Ok(string.as_pointer_value().into())
+                    Ok(string_ptr.into())
                     // Ok(ptr.as_basic_value_enum())
                 }
             }
@@ -505,6 +525,8 @@ impl<'a, 'ctx> Codegen<'a, 'ctx> {
         }
 
         self.builder.build_return(Some(&self.context.i32_type().const_zero())).unwrap();
+
+        println!("{:?}", self.global_strings);
 
         if function.verify(true) {
             Ok(function)
@@ -531,6 +553,7 @@ impl<'a, 'ctx> Codegen<'a, 'ctx> {
             program,
             variables: HashMap::new(),
             fn_value_opt: None,
+            global_strings: HashMap::new(),
             printf_fn,
             scanf_fn
         };

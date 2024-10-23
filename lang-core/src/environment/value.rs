@@ -56,7 +56,6 @@ impl From<IdentifierType> for ValueType {
         match value {
             IdentifierType::Int => ValueType::Integer,
             IdentifierType::Float => ValueType::Float,
-            IdentifierType::String => ValueType::String,
             IdentifierType::Bool => ValueType::Boolean
         }
     }

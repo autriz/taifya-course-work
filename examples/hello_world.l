@@ -1,14 +1,3 @@
 begin
-    var hello: @;;
-
-    hello := "Hello world!";
-
-    writeln hello, " :)";
-    writeln hello, " :)";
-    writeln hello, " :)";
-    writeln hello, " :)";
-    writeln hello, " :)";
-    writeln hello, " :)";
-    writeln hello, " :)";
-    writeln hello, " :)"
+    writeln "Hello world!"
 end
