@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 codespan-reporting = "0.11.1"
 thiserror = "1.0.64"
+utf8-chars = "3.0.5"
 
 termcolor = { workspace = true }
 inkwell = { workspace = true }

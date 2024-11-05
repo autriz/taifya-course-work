@@ -28,9 +28,7 @@ impl ModuleAnalyzer {
 
         let mut env = Environment::new();
 
-        let statements = module.program.statements.clone();
-
-        for statement in statements {
+        for statement in &module.program.statements {
             analyzer.analyze_statement(statement, &mut env);
         }
 
@@ -50,28 +48,28 @@ impl ModuleAnalyzer {
         }
     }
 
-    fn analyze_statement(&mut self, statement: Statement, env: &mut Environment) {
+    fn analyze_statement(&mut self, statement: &Statement, env: &mut Environment) {
         match statement {
             Statement::Declaration(declaration) => {
                 if declaration.identifiers.len() == 0 {
                     self.problems.warning(Warning::EmptyDeclaration { location: declaration.location });
                 }
 
-                for identifiers in declaration.identifiers {
-                    for name in identifiers.names {
+                for identifiers in &declaration.identifiers {
+                    for name in &identifiers.names {
                         match env.get(&name.value) {
                             None => {
                                 env.declare(
                                     name.value.clone(), 
                                     identifiers.names_type.to_owned().into()
                                 );
-                                env.init_usage(name.value, name.location, &mut self.problems);
+                                env.init_usage(name.value.clone(), name.location, &mut self.problems);
                             }
                             Some(_) => {
                                 self.problems.error(AnalyzeError::VariableRedeclaration { 
                                     location_a: env.usages.get(&name.value).unwrap().0, 
                                     location_b: name.location,
-                                    variable: name.value
+                                    variable: name.value.clone()
                                 })
                             }
                         }
@@ -82,10 +80,10 @@ impl ModuleAnalyzer {
         }
     }
 
-    fn analyze_operator(&mut self, operator: Operator, env: &mut Environment) {
+    fn analyze_operator(&mut self, operator: &Operator, env: &mut Environment) {
         match operator {
             Operator::Assignment(assignment) => {
-                let identifier = assignment.identifier.clone();
+                let identifier = &assignment.identifier;
                 let identifier_type = match get_identifier_type(identifier, env) {
                     Ok(type_) => type_,
                     Err(err) => {
@@ -96,8 +94,8 @@ impl ModuleAnalyzer {
                 env.increment_usage(&assignment.identifier.value);
                 env.increment_initialization(&assignment.identifier.value);
 
-                let value = assignment.value;
-                let value_type = match get_expression_type(value.clone(), env) {
+                let value = &assignment.value;
+                let value_type = match get_expression_type(value, env) {
                     Ok(type_) => type_,
                     Err(err) => {
                         self.problems.error(err);
@@ -114,12 +112,12 @@ impl ModuleAnalyzer {
                 }
             },
             Operator::Nested(nested) => {
-                nested.operators.into_iter().for_each(|operator| {
-                    self.analyze_operator(operator, env);
+                nested.operators.iter().for_each(|operator| {
+                    self.analyze_operator(&operator, env);
                 });
             },
             Operator::Conditional(conditional) => {
-                let condition_type = match get_expression_type(conditional.condition.clone(), env) {
+                let condition_type = match get_expression_type(&conditional.condition, env) {
                     Ok(type_) => type_,
                     Err(err) => {
                         self.problems.error(err);
@@ -135,16 +133,16 @@ impl ModuleAnalyzer {
                     });
                 }
 
-                self.analyze_operator(*conditional.resolution.clone(), env);
+                self.analyze_operator(&conditional.resolution, env);
 
-                if let Some(alternative) = conditional.alternative.clone() {
-                    self.analyze_operator(*alternative, env);
+                if let Some(alternative) = &conditional.alternative {
+                    self.analyze_operator(alternative, env);
                 }
 
                 match conditional.condition {
                     Expression::Primitive(Primitive::Bool { value, .. }) => match value {
                         true => { 
-                            if let Some(alternative) = conditional.alternative {
+                            if let Some(alternative) = &conditional.alternative {
                                 self.problems.warning(Warning::UnreachableElseClause { location: alternative.location() }); 
                             }
                         },
@@ -156,7 +154,7 @@ impl ModuleAnalyzer {
                 }
             },
             Operator::ConditionalLoop(loop_) => {
-                let condition_type = match get_expression_type(loop_.condition.clone(), env) {
+                let condition_type = match get_expression_type(&loop_.condition, env) {
                     Ok(type_) => type_,
                     Err(err) => {
                         self.problems.error(err);
@@ -172,7 +170,7 @@ impl ModuleAnalyzer {
                     });
                 }
 
-                self.analyze_operator(*loop_.block.clone(), env);
+                self.analyze_operator(&loop_.block, env);
 
                 match loop_.condition {
                     Expression::Primitive(Primitive::Bool { value, .. }) => match value {
@@ -190,10 +188,10 @@ impl ModuleAnalyzer {
                 }
             },
             Operator::FixedLoop(loop_) => {
-                let assignment = loop_.assignment;
+                let assignment = &loop_.assignment;
 
-                let identifier = assignment.identifier;
-                let identifier_type = match get_identifier_type(identifier.clone(), env) {
+                let identifier = &assignment.identifier;
+                let identifier_type = match get_identifier_type(&identifier, env) {
                     Ok(type_) => type_,
                     Err(err) => {
                         self.problems.error(err);
@@ -212,8 +210,8 @@ impl ModuleAnalyzer {
                     });
                 }
 
-                let value = assignment.value;
-                let value_type = match get_expression_type(value.clone(), env) {
+                let value = &assignment.value;
+                let value_type = match get_expression_type(&value, env) {
                     Ok(type_) => type_,
                     Err(err) => {
                         self.problems.error(err);
@@ -229,7 +227,7 @@ impl ModuleAnalyzer {
                     });
                 }
 
-                let to_type = match get_expression_type(loop_.to.clone(), env) {
+                let to_type = match get_expression_type(&loop_.to, env) {
                     Ok(type_) => type_,
                     Err(err) => {
                         self.problems.error(err);
@@ -245,8 +243,8 @@ impl ModuleAnalyzer {
                     });
                 }
 
-                if let Some(step) = loop_.step {
-                    let step_type = match get_expression_type(step.clone(), env) {
+                if let Some(step) = &loop_.step {
+                    let step_type = match get_expression_type(&step, env) {
                         Ok(type_) => type_,
                         Err(err) => {
                             self.problems.error(err);
@@ -263,7 +261,7 @@ impl ModuleAnalyzer {
                     }
                 }
 
-                self.analyze_operator(*loop_.block, env);
+                self.analyze_operator(&loop_.block, env);
             },
             Operator::Input(input) => {
                 input.identifiers.iter().for_each(|ident| {
@@ -280,14 +278,14 @@ impl ModuleAnalyzer {
                 });
             },
             Operator::Output(output) => {
-                output.expressions.into_iter().for_each(|expr| {
+                output.expressions.iter().for_each(|expr| {
                     self.analyze_expression(expr, env);
                 });
             }
         }
     }
 
-    fn analyze_expression(&mut self, expression: Expression, env: &mut Environment) {
+    fn analyze_expression(&mut self, expression: &Expression, env: &mut Environment) {
         if let Err(err) = get_expression_type(expression, env) {
             self.problems.error(err);
         }
@@ -295,7 +293,7 @@ impl ModuleAnalyzer {
 }
 
 fn get_expression_type(
-    expression: Expression, 
+    expression: &Expression, 
     env: &mut Environment
 ) -> Result<ValueType, AnalyzeError> {
     match expression {
@@ -303,7 +301,7 @@ fn get_expression_type(
             if !env.is_initialized(&identifier.value) {
                 return Err(AnalyzeError::VariableNotInitialized { 
                     location: identifier.location, 
-                    variable: identifier.value 
+                    variable: identifier.value.clone()
                 })
             }
 
@@ -314,24 +312,24 @@ fn get_expression_type(
         Expression::Primitive(primitive) => Ok(get_primitive_type(primitive)),
         Expression::Infix(infix) => get_infix_type(infix, env),
         Expression::Prefix(prefix) => get_prefix_type(prefix, env),
-        Expression::Nested { expression, .. } => get_expression_type(*expression, env)
+        Expression::Nested { expression, .. } => get_expression_type(&expression, env)
     }
 }
 
 fn get_identifier_type(
-    identifier: Identifier, 
+    identifier: &Identifier, 
     env: &Environment
 ) -> Result<ValueType, AnalyzeError> {
     match env.get(&identifier.value) {
         Some(value) => Ok(value._type()),
         None => Err(AnalyzeError::VariableNotDeclared {
             location: identifier.location,
-            variable: identifier.value
+            variable: identifier.value.clone()
         })
     }
 }
 
-fn get_primitive_type(primitive: Primitive) -> ValueType {
+fn get_primitive_type(primitive: &Primitive) -> ValueType {
     match primitive {
         Primitive::Int { .. } => ValueType::Integer,
         Primitive::Float { .. } => ValueType::Float,
@@ -341,11 +339,11 @@ fn get_primitive_type(primitive: Primitive) -> ValueType {
 }
 
 fn get_infix_type(
-    infix: Infix, 
+    infix: &Infix, 
     env: &mut Environment
 ) -> Result<ValueType, AnalyzeError> {
-    let left_type = get_expression_type(*infix.left.clone(), env)?;
-    let right_type = get_expression_type(*infix.right.clone(), env)?;
+    let left_type = get_expression_type(&infix.left, env)?;
+    let right_type = get_expression_type(&infix.right, env)?;
 
     let allowed_types = get_allowed_types_for(&infix.operator);
 
@@ -395,12 +393,12 @@ fn get_infix_type(
 }
 
 fn get_prefix_type(
-    prefix: Prefix,
+    prefix: &Prefix,
     env: &mut Environment
 ) -> Result<ValueType, AnalyzeError> {
-    let expression_type = get_expression_type(*prefix.expression, env)?;
+    let expression_type = get_expression_type(&prefix.expression, env)?;
 
-    match (prefix.operator, &expression_type) {
+    match (&prefix.operator, &expression_type) {
         (Token::Bang, ValueType::Boolean) => Ok(expression_type),
         _ => Err(AnalyzeError::InvalidUnaryOperation { location: prefix.location })
     }

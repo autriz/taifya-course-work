@@ -29,21 +29,21 @@ impl Label {
     }
 }
 
-pub struct Location {
-    pub src: String,
+pub struct Location<'a> {
+    pub src: &'a str,   
     pub path: PathBuf,
     pub label: Label,
     pub extra_labels: Vec<Label>,
 }
 
-pub struct Diagnostic {
+pub struct Diagnostic<'a> {
     pub title: String,
     pub text: String,
     pub level: Level,
-    pub location: Option<Location>
+    pub location: Option<Location<'a>>
 }
 
-impl Diagnostic {
+impl<'a> Diagnostic<'a> {
     pub fn write(&self, buf: &mut Buffer) {
         use std::io::Write;
 
@@ -61,7 +61,7 @@ impl Diagnostic {
         let mut files = SimpleFiles::new();
 
         let location_path = location.path.to_str().unwrap();
-        let location_src = location.src.as_str();
+        let location_src = location.src;
 
         let file_id = files.add(location_path, location_src);
 

@@ -7,10 +7,6 @@ pub struct Problems {
 }
 
 impl Problems {
-    pub fn new() -> Self {
-        Default::default()
-    }
-
     pub fn error(&mut self, error: AnalyzeError) {
         self.errors.push(error)
     }

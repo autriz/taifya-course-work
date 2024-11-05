@@ -5,41 +5,42 @@ use std::{
 use termcolor::{BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
 
 pub(crate) fn print_analyzing(text: &str) {
-    print_colourful_prefix("Analyzing", text)
+    print_colourful_prefix("Analyzing", Color::Magenta, text)
 }
 
 pub(crate) fn print_analyzed(duration: Duration) {
-    print_colourful_prefix("Analyzed", &format!("in {}", seconds(duration)))
+    print_colourful_prefix("Analyzed", Color::Green, &format!("in {}", seconds(duration)))
 }
 
 pub(crate) fn print_compiling(text: &str) {
-    print_colourful_prefix("Compiling", text);
+    print_colourful_prefix("Compiling", Color::Cyan, text);
 }
 
 pub(crate) fn print_compiled(duration: Duration) {
-    print_colourful_prefix("Compiled", &format!("in {}", seconds(duration)));
+    print_colourful_prefix("Compiled", Color::Green, &format!("in {}", seconds(duration)))
 }
 
 pub fn seconds(duration: Duration) -> String {
     format!("{:.2}s", duration.as_millis() as f32 / 1000.)
 }
 
-pub fn print_colourful_prefix(prefix: &str, text: &str) {
+pub fn print_colourful_prefix(prefix: &str, color: Color, text: &str) {
     let buffer_writer = stderr_buffer_writer();
     let mut buffer = buffer_writer.buffer();
     buffer
         .set_color(
             ColorSpec::new()
                 .set_intense(true)
-                .set_fg(Some(Color::Magenta)),
+                .set_bold(true)
+                .set_fg(Some(color)),
         )
-        .expect("print_green_prefix");
-    write!(buffer, "{prefix: >11}").expect("print_green_prefix");
+        .expect("print_colourful_prefix");
+    write!(buffer, "{prefix: >11}").expect("print_colourful_prefix");
     buffer
         .set_color(&ColorSpec::new())
-        .expect("print_green_prefix");
-    writeln!(buffer, " {text}").expect("print_green_prefix");
-    buffer_writer.print(&buffer).expect("print_green_prefix");
+        .expect("print_colourful_prefix");
+    writeln!(buffer, " {text}").expect("print_colourful_prefix");
+    buffer_writer.print(&buffer).expect("print_colourful_prefix");
 }
 
 pub fn stderr_buffer_writer() -> BufferWriter {

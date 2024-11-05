@@ -479,9 +479,6 @@ impl<'a, 'ctx> Codegen<'a, 'ctx> {
                 Primitive::Bool { value: true, .. } => Ok(self.context.bool_type().const_int(1, false).as_basic_value_enum()),
                 Primitive::Bool { value: false, .. } => Ok(self.context.bool_type().const_int(0, false).as_basic_value_enum()),
                 Primitive::String { value, .. } => {
-                    // let value = unsafe {
-                    //     self.builder.build_global_string(value.as_str(), "").unwrap()
-                    // };
                     let string_ptr = match self.global_strings.get(value) {
                         Some(string_ptr) => *string_ptr,
                         None => {
@@ -492,16 +489,8 @@ impl<'a, 'ctx> Codegen<'a, 'ctx> {
                             *self.global_strings.get(value).unwrap()
                         }
                     };
-                    // let ptr = self.builder.build_alloca(
-                    //     self.context.i8_type().array_type(value.len() as u32),
-                    //     ""
-                    // ).unwrap();
-                    // self.builder.build_store(ptr, string).unwrap();
-
-                    // self.builder.build_global_string_ptr(value, name)
 
                     Ok(string_ptr.into())
-                    // Ok(ptr.as_basic_value_enum())
                 }
             }
         }

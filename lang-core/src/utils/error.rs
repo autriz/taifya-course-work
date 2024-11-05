@@ -66,7 +66,7 @@ impl Error {
                     text,
                     level: Level::Error,
                     location: Some(Location {
-                        src: src.clone(),
+                        src: &src,
                         path: path.clone(),
                         label: Label {
                             text: Some(label.to_string()),
@@ -91,7 +91,7 @@ impl Error {
                                     text,
                                     level: Level::Error,
                                     location: Some(Location {
-                                        src: src.clone(),
+                                        src: &src,
                                         path: path.clone(),
                                         label: Label {
                                             text: None,
@@ -113,7 +113,7 @@ impl Error {
                                     text,
                                     level: Level::Error,
                                     location: Some(Location {
-                                        src: src.clone(),
+                                        src: &src,
                                         path: path.clone(),
                                         label: Label {
                                             text: None,
@@ -131,7 +131,7 @@ impl Error {
                                     text,
                                     level: Level::Error,
                                     location: Some(Location {
-                                        src: src.clone(),
+                                        src: &src,
                                         path: path.clone(),
                                         label: Label {
                                             text: None,
@@ -149,7 +149,7 @@ impl Error {
                                     text,
                                     level: Level::Error,
                                     location: Some(Location {
-                                        src: src.clone(),
+                                        src: &src,
                                         path: path.clone(),
                                         label: Label {
                                             text: None,
@@ -171,7 +171,7 @@ impl Error {
                                     text,
                                     level: Level::Error,
                                     location: Some(Location {
-                                        src: src.clone(),
+                                        src: &src,
                                         path: path.clone(),
                                         label: Label {
                                             text: Some("Another defined here".into()),
@@ -204,7 +204,7 @@ impl Error {
                                     text: text_a,
                                     level: Level::Error,
                                     location: Some(Location {
-                                        src: src.clone(),
+                                        src: &src,
                                         path: path.clone(),
                                         label: Label {
                                             text: None,
@@ -219,7 +219,7 @@ impl Error {
                                     text: text_b,
                                     level: Level::Error,
                                     location: Some(Location {
-                                        src: src.clone(),
+                                        src: &src,
                                         path: path.clone(),
                                         label: Label {
                                             text: None,

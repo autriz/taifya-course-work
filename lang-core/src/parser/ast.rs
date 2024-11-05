@@ -1126,7 +1126,7 @@ impl Display for Primitive {
             Self::Int { value, .. } => write!(f, "{value}"),
             Self::Float { value, .. } => write!(f, "{value}"),
             Self::Bool { value, .. } => write!(f, "{value}"),
-            Self::String { value, .. } => write!(f, "{value}")
+            Self::String { value, .. } => write!(f, "\"{value}\"")
         }
     }
 }

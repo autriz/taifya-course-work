@@ -10,18 +10,23 @@ use clap::Parser;
 use cli::{print_analyzed, print_analyzing, print_compiled, print_compiling};
 use inkwell::context::Context;
 use lang_core::{
-    analyzer::analyze, codegen::prelude::Codegen, environment::prelude::Environment, eval::eval, utils::prelude::{Warning, WarningEmitterIO}
+    analyzer::{analyze, analyze_from_stream}, codegen::prelude::Codegen, environment::prelude::Environment, eval::eval, utils::prelude::{Warning, WarningEmitterIO}
 };
 
 #[derive(Parser)]
 enum Command {
     /// Performs lexical, syntactical and semantical analysis
     Analyze {
+        /// Path of source file
         path: PathBuf,
+        /// Do not print parsed source code
+        #[arg(short, long, default_value_t = false)]
+        no_output: bool,
     },
     /// Performs lexical, syntactical and semantical analysis
     /// and runs it in interpreter mode
     Run {
+        /// Path of source file
         path: PathBuf,
     },
     /// Performs lexical, syntactical and semantical analysis
@@ -47,7 +52,7 @@ enum Command {
 
 fn main() {
     let _ = match Command::parse() {
-        Command::Analyze { path } => {
+        Command::Analyze { path, no_output } => {
             let warning_emitter = Rc::new(ConsoleWarningEmitter);
 
             let buf_writer = crate::cli::stderr_buffer_writer();
@@ -56,9 +61,11 @@ fn main() {
             print_analyzing(path.to_str().unwrap());
             let start = std::time::Instant::now();
 
-            match analyze(path, warning_emitter.clone()) {
+            match analyze_from_stream(path, warning_emitter.clone()) {
                 Ok(module) => {
-                    println!("{}", module.program);
+                    if !no_output {
+                        println!("{}", module.program);
+                    }
                 },
                 Err(err) => {
                     err.pretty(&mut buf);
@@ -81,7 +88,7 @@ fn main() {
             print_analyzing(path.to_str().unwrap());
             let start = std::time::Instant::now();
 
-            match analyze(path, warning_emitter.clone()) {
+            match analyze_from_stream(path, warning_emitter.clone()) {
                 Ok(module) => {
                     print_analyzed(std::time::Instant::now() - start);
 
@@ -113,7 +120,7 @@ fn main() {
             print_analyzing(path.to_str().unwrap());
             let start = std::time::Instant::now();
 
-            let analyzed = match analyze(path.clone(), warning_emitter.clone()) {
+            let analyzed = match analyze_from_stream(path.clone(), warning_emitter.clone()) {
                 Ok(module) => module,
                 Err(err) => {
                     err.pretty(&mut buf);

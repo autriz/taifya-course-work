@@ -1,5 +1,5 @@
 begin
-    var a, b: %;;
+    var a, b: % (* hello *);;
 
     b := 5;
 

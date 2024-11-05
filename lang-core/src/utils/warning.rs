@@ -83,12 +83,6 @@ impl WarningEmitter {
         _ = self.count.fetch_add(1, Ordering::Relaxed);
         self.emitter.emit_warning(warning);
     }
-
-    pub fn vector() -> (Self, Rc<VectorWarningEmitterIO>) {
-        let io = Rc::new(VectorWarningEmitterIO::default());
-        let emitter = Self::new(io.clone());
-        (emitter, Rc::clone(&io))
-    }
 }
 
 pub struct TypeWarningEmitter {
@@ -164,7 +158,7 @@ impl Warning {
                         text: "".into(),
                         level: Level::Warning,
                         location: Some(Location {
-                            src: src.clone(),
+                            src: &src,
                             path: path.to_path_buf(),
                             label: Label {
                                 text: None,
@@ -180,7 +174,7 @@ impl Warning {
                         text: "".into(),
                         level: Level::Warning,
                         location: Some(Location {
-                            src: src.clone(),
+                            src: &src,
                             path: path.to_path_buf(),
                             label: Label {
                                 text: None,
@@ -196,7 +190,7 @@ impl Warning {
                         text: "".into(),
                         level: Level::Warning,
                         location: Some(Location {
-                            src: src.clone(),
+                            src: &src,
                             path: path.to_path_buf(),
                             label: Label {
                                 text: None,
@@ -213,7 +207,7 @@ impl Warning {
                         // hint: Some("You can safely remove it.".into()),
                         level: Level::Warning,
                         location: Some(Location {
-                            src: src.clone(),
+                            src: &src,
                             path: path.to_path_buf(),
                             label: Label {
                                 text: Some("This value is never used".into()),
@@ -229,7 +223,7 @@ impl Warning {
                         text: "".into(),
                         level: Level::Warning,
                         location: Some(Location {
-                            src: src.clone(),
+                            src: &src,
                             path: path.to_path_buf(),
                             label: Label {
                                 text: None,
@@ -245,7 +239,7 @@ impl Warning {
                         text: "".into(),
                         level: Level::Warning,
                         location: Some(Location {
-                            src: src.clone(),
+                            src: &src,
                             path: path.to_path_buf(),
                             label: Label {
                                 text: None,

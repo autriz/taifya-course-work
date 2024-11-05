@@ -10,10 +10,10 @@ pub mod prelude {
 
 use std::{path::PathBuf, rc::Rc};
 
+use utf8_chars::BufReadCharsExt;
+
 use crate::{
-    parser::prelude::{Module, parse_module},
-    utils::prelude::{WarningEmitter, WarningEmitterIO, Error, TypeWarningEmitter},
-    analyzer::prelude::{ModuleAnalyzer, Outcome}
+    analyzer::prelude::{ModuleAnalyzer, Outcome}, parser::{parser::parse_module_from_stream, prelude::{parse_module, Module}}, utils::prelude::{Error, TypeWarningEmitter, WarningEmitter, WarningEmitterIO}
 };
 
 
@@ -35,10 +35,50 @@ pub fn analyze(
         Ok(parsed) => parsed,
         Err(err) => {
             // println!("{err:?}");
-            let error = Error::Parse { path, src: src.to_string(), error: err };
+            let error = Error::Parse { path, src, error: err };
             return Err(error)
         }
     };
+
+    let warnings = TypeWarningEmitter::new(
+        path.clone(),
+        src.to_string(),
+        warnings
+    );
+
+    let outcome = ModuleAnalyzer::analyze(parsed.module, &warnings);
+
+    match outcome {
+        Outcome::Ok(module) => {
+            Ok(module)
+        },
+        Outcome::PartialFailure(_, errors) => {
+            // println!("{errors:?}");
+            let error = Error::Type { path, src, errors };
+            Err(error)
+        }
+    }
+}
+
+pub fn analyze_from_stream(
+    path: PathBuf,
+    warnings: Rc<dyn WarningEmitterIO>,
+) -> Result<Module, Error> {
+    let warnings = WarningEmitter::new(warnings);
+    let file = std::fs::File::open(path.clone()).unwrap();
+    let mut reader = std::io::BufReader::new(file.try_clone().unwrap());
+    let stream = reader.chars();
+
+    let parsed = match parse_module_from_stream(stream) {
+        Ok(parsed) => parsed,
+        Err(err) => {
+            let src = std::fs::read_to_string(path.clone()).unwrap();
+            let error = Error::Parse { path, src, error: err };
+            return Err(error)
+        }
+    };
+
+    let src = std::fs::read_to_string(path.clone()).unwrap();
 
     let warnings = TypeWarningEmitter::new(
         path.clone(),
@@ -54,7 +94,7 @@ pub fn analyze(
         },
         Outcome::PartialFailure(_, errors) => {
             // println!("{errors:?}");
-            let error = Error::Type { path, src: src.to_string(), errors };
+            let error = Error::Type { path, src, errors };
             Err(error)
         }
     }

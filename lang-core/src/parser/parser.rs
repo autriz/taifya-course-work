@@ -208,6 +208,14 @@ pub fn parse_module(src: &str) -> Result<Parsed, ParseError> {
     Ok(parsed)
 }
 
+pub fn parse_module_from_stream(stream: impl Iterator<Item = Result<char, std::io::Error>>) -> Result<Parsed, ParseError> {
+    let lexer = Lexer::new(stream.enumerate().map(|(i, c)| (i as u32, c.unwrap())));
+    let mut parser = Parser::new(lexer);
+    let parsed = parser.parse()?;
+    
+    Ok(parsed)
+}
+
 impl From<&Token> for Precedence {
     fn from(value: &Token) -> Self {
         match value {
