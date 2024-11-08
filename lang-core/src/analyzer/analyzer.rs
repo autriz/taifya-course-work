@@ -1,6 +1,6 @@
 
 use crate::{
-    analyzer::prelude::{Problems, AnalyzeError, Warning}, 
+    analyzer::{error::OperatorMismatchSide, prelude::{AnalyzeError, Problems, Warning}}, 
     environment::prelude::{Environment, ValueType}, 
     lexer::prelude::Token, 
     parser::prelude::{Expression, Identifier, Infix, Module, Operator, Prefix, Primitive, Statement}, 
@@ -36,9 +36,8 @@ impl ModuleAnalyzer {
         
         analyzer.problems.sort();
 
-        let warning_list = analyzer.problems.take_warnings();
-        for warning in &warning_list {
-            warnings.emit(warning.clone());
+        for warning in analyzer.problems.take_warnings() {
+            warnings.emit(warning);
         }
 
         match Vec::try_from(analyzer.problems.take_errors()) {
@@ -362,11 +361,17 @@ fn get_infix_type(
             })
         },
         _ => return Err(AnalyzeError::OperatorMismatch { 
-            location_a: infix.left.location(), 
-            location_b: infix.right.location(), 
-            expected: allowed_types, 
-            got_a: left_type, 
-            got_b: right_type 
+            left: OperatorMismatchSide {
+                location: infix.left.location(),
+                value_type: left_type,
+                is_valid: is_left_allowed
+            },  
+            right: OperatorMismatchSide {
+                location: infix.right.location(),
+                value_type: right_type,
+                is_valid: is_right_allowed
+            },
+            expected: allowed_types
         })
     };
 
@@ -400,7 +405,7 @@ fn get_prefix_type(
 
     match (&prefix.operator, &expression_type) {
         (Token::Bang, ValueType::Boolean) => Ok(expression_type),
-        _ => Err(AnalyzeError::InvalidUnaryOperation { location: prefix.location })
+        (token, _) => Err(AnalyzeError::InvalidUnaryOperation { location: prefix.location, token: token.clone() })
     }
 }
 

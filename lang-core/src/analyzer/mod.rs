@@ -22,7 +22,6 @@ pub fn analyze(
     warnings: Rc<dyn WarningEmitterIO>,
 ) -> Result<Module, Error> {
     let warnings = WarningEmitter::new(warnings);
-
     let src = match std::fs::read_to_string(path.clone()) {
         Ok(src) => src,
         Err(err) => {
@@ -65,30 +64,43 @@ pub fn analyze_from_stream(
     warnings: Rc<dyn WarningEmitterIO>,
 ) -> Result<Module, Error> {
     let warnings = WarningEmitter::new(warnings);
-    let file = std::fs::File::open(path.clone()).unwrap();
-    let mut reader = std::io::BufReader::new(file.try_clone().unwrap());
-    let stream = reader.chars();
+    let file = match std::fs::File::open(path.clone()) {
+        Ok(file) => file,
+        Err(err) => {
+            let error = Error::StdIo { err: err.kind() };
+            return Err(error)
+        }
+    };
+
+    let file_size = file.metadata()
+        .map_err(|err| Error::StdIo { err: err.kind() })?.len() as usize;
+
+    let mut src = String::with_capacity(file_size);
+    let mut reader = std::io::BufReader::new(file);
+    let stream = reader.chars()
+        .map(|c| {
+            let c = c.unwrap();
+            src.push(c);
+            c
+        });
 
     let parsed = match parse_module_from_stream(stream) {
         Ok(parsed) => parsed,
         Err(err) => {
-            let src = std::fs::read_to_string(path.clone()).unwrap();
             let error = Error::Parse { path, src, error: err };
             return Err(error)
         }
     };
 
-    let src = std::fs::read_to_string(path.clone()).unwrap();
-
     let warnings = TypeWarningEmitter::new(
         path.clone(),
-        src.clone(),
+        src.to_string(),
         warnings
     );
 
     let outcome = ModuleAnalyzer::analyze(parsed.module, &warnings);
 
-    match outcome {
+    let result = match outcome {
         Outcome::Ok(module) => {
             Ok(module)
         },
@@ -97,7 +109,9 @@ pub fn analyze_from_stream(
             let error = Error::Type { path, src, errors };
             Err(error)
         }
-    }
+    };
+
+    result
 }
 
 #[cfg(test)]

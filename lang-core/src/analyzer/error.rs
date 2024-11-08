@@ -1,6 +1,6 @@
-use crate::{utils::prelude::SrcSpan, environment::prelude::ValueType};
+use crate::{environment::prelude::ValueType, lexer::token::Token, utils::prelude::SrcSpan};
 
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct Problems {
     errors: Vec<AnalyzeError>,
     warnings: Vec<Warning>,
@@ -29,36 +29,102 @@ impl Problems {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum AnalyzeError {
+    /// Occurs when the type of the expression on the left side of the assignment operator
+    /// does not match the type of the expression on the right side.
+    ///
+    /// Example:
+    /// ```
+    /// begin
+    ///     var a: %;;
+    ///     a := 10.0 <- Type mismatch: expected `Int`, got `Float`
+    /// end
+    /// ```
     TypeMismatch {
         location: SrcSpan,
         expected: ValueType,
         got: ValueType,
     },
+    /// Occurs when a variable is used before it is declared.
+    ///
+    /// Example:
+    /// ```
+    /// begin
+    ///     a := 10 <- Variable not declared: `a`
+    /// end
+    /// ```
     VariableNotDeclared {
         location: SrcSpan,
         variable: String,
     },
+    /// Occurs when a variable is used before it is initialized.
+    /// 
+    /// Example:
+    /// ```
+    /// begin
+    ///     var a: %;;
+    ///     writeln a <- Variable not initialized: `a`
+    /// end
+    /// ```
     VariableNotInitialized {
         location: SrcSpan,
         variable: String,
     },
+    ///
+    /// Occurs when a variable is declared more than once.
+    ///
+    /// Example:
+    /// ```text
+    /// begin
+    ///     var a: %;;
+    ///     var a: %; <- Variable redeclaration: `a`
+    /// end
+    /// ```
     VariableRedeclaration {
         location_a: SrcSpan,
         location_b: SrcSpan,
         variable: String,
     },
+    /// Occurs when an invalid unary operation is performed.
+    /// 
+    /// Example:
+    /// ```
+    /// begin
+    ///     var a: %;
+    ///     -a <- Invalid unary operation: `-`
+    /// end
+    /// ```
     InvalidUnaryOperation {
-        location: SrcSpan
+        location: SrcSpan,
+        token: Token
     },
+    /// Occurs when the types of the operands do not match the expected types for the operator.
+    ///
+    /// Example:
+    /// ```
+    /// begin
+    ///     var a, b: !;
+    ///         c: $;;
+    ///
+    ///     a := 10.0;
+    ///     b := 10.0;
+    ///
+    ///     c := a == b <- Type mismatch. Expected any of `Integer`, `Boolean`, but got `Float` and `Float`
+    /// end
+    /// ```
     OperatorMismatch {
-        location_a: SrcSpan,
-        location_b: SrcSpan,
+        left: OperatorMismatchSide,
+        right: OperatorMismatchSide,
         expected: Vec<ValueType>,
-        got_a: ValueType,
-        got_b: ValueType
     }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct OperatorMismatchSide {
+    pub location: SrcSpan,
+    pub value_type: ValueType,
+    pub is_valid: bool
 }
 
 impl AnalyzeError {
@@ -68,8 +134,8 @@ impl AnalyzeError {
             | AnalyzeError::VariableNotDeclared { location, .. }
             | AnalyzeError::VariableNotInitialized { location, .. }
             | AnalyzeError::VariableRedeclaration { location_b: location, .. }
-            | AnalyzeError::InvalidUnaryOperation { location }
-            | AnalyzeError::OperatorMismatch { location_a: location, .. } => location.start
+            | AnalyzeError::InvalidUnaryOperation { location, .. }
+            | AnalyzeError::OperatorMismatch { left: OperatorMismatchSide { location, .. }, .. } => location.start
         }
     }
 }
