@@ -10,7 +10,7 @@ use crate::{
 };
 use super::diagnostic::{Diagnostic, Label, Level, Location};
 
-#[derive(Debug, Error, Clone, PartialEq, Eq)]
+#[derive(Debug, Error, Clone, PartialEq)]
 pub enum Error {
     #[error("failed to parse source code")]
     Parse {
@@ -83,8 +83,8 @@ impl Error {
                     .iter()
                     .for_each(|error| {
                         match error {
-                            AnalyzeError::InvalidUnaryOperation { location } => {
-                                let text = format!("Invalid unary operation");
+                            AnalyzeError::InvalidUnaryOperation { location, token } => {
+                                let text = format!("Invalid unary operation: `{}`", token.as_literal());
 
                                 diagnostics.push(Diagnostic {
                                     title: "Type mismatch".into(),
@@ -185,46 +185,48 @@ impl Error {
                                 })
                             }
                             AnalyzeError::OperatorMismatch { 
-                                location_a, 
-                                location_b, 
-                                expected, 
-                                got_a, 
-                                got_b 
+                                left,
+                                right,
+                                expected,
                             } => {
                                 let expected_types = expected.iter()
                                     .map(|type_| format!("{type_:?}"))
                                     .collect::<Vec<String>>()
                                     .join("`, `");
 
-                                let text_a = format!("Expected any of `{expected_types}`, but got `{got_a:?}`");
-                                let text_b = format!("Expected any of `{expected_types}`, but got `{got_b:?}`");
+                                let text = format!("Expected any of `{expected_types}`, but got `{:?}` and `{:?}`", left.value_type, right.value_type);
+
+                                let label =match (left.is_valid, right.is_valid) {
+                                    (true, false) => Label {
+                                            text: Some("Invalid right operand".into()),
+                                            span: right.location,
+                                    },
+                                    (false, true) => Label {
+                                            text: Some("Invalid left operand".into()),
+                                            span: left.location,
+                                    },
+                                    (false, false) => {
+                                        let location = SrcSpan {
+                                            start: left.location.start,
+                                            end: right.location.end,
+                                        };
+
+                                        Label {
+                                            text: Some("Invalid operands".into()),
+                                            span: location,
+                                        }
+                                    },
+                                    _ => unreachable!()
+                                };
 
                                 diagnostics.push(Diagnostic {
                                     title: "Type mismatch".into(),
-                                    text: text_a,
+                                    text,
                                     level: Level::Error,
                                     location: Some(Location {
                                         src: &src,
                                         path: path.clone(),
-                                        label: Label {
-                                            text: None,
-                                            span: *location_a,
-                                        },
-                                        extra_labels: vec![]
-                                    }),
-                                });
-                                    
-                                diagnostics.push(Diagnostic {
-                                    title: "Type mismatch".into(),
-                                    text: text_b,
-                                    level: Level::Error,
-                                    location: Some(Location {
-                                        src: &src,
-                                        path: path.clone(),
-                                        label: Label {
-                                            text: None,
-                                            span: *location_b,
-                                        },
+                                        label,
                                         extra_labels: vec![]
                                     }),
                                 });
