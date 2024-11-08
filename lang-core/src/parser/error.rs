@@ -1,9 +1,10 @@
 use crate::{lexer::prelude::{LexicalError, Token}, utils::prelude::SrcSpan};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ParseErrorType {
     ExpectedIdent,
     ExpectedOperator,
+    ExpectedBegin,
     ExpectedEnd,
     UnexpectedSemicolonBeforeEnd,
     UnexpectedEof,
@@ -17,7 +18,7 @@ pub enum ParseErrorType {
     LexError { error: LexicalError },
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ParseError {
     pub error: ParseErrorType,
     pub span: SrcSpan
@@ -28,6 +29,7 @@ impl ParseError {
         match &self.error {
             ParseErrorType::ExpectedIdent => ("Expected identifier", vec![]),
             ParseErrorType::ExpectedOperator => ("Expected operator", vec![]),
+            ParseErrorType::ExpectedBegin => ("Expected begin", vec![]),
             ParseErrorType::ExpectedEnd => ("Expected end", vec![]),
             ParseErrorType::UnexpectedSemicolonBeforeEnd => ("Unexpected semicolon before `end`", vec![]),
             ParseErrorType::ExpectedType => ("Expected type", vec![]),

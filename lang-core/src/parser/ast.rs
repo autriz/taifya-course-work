@@ -34,7 +34,10 @@ impl<T: Iterator<Item = LexResult>> Parse<T> for Program {
         parser: &mut crate::parser::prelude::Parser<T>, 
         _precedence: Option<Precedence>
     ) -> Result<Self, crate::parser::prelude::ParseError> {
-        let (start, mut end) = parser.expect_one(Token::Begin)?;
+        let (start, mut end) = match parser.expect_one(Token::Begin) {
+            Ok((start, end)) => (start, end),
+            Err(err) => return parse_error(ParseErrorType::ExpectedBegin, err.span)
+        };
 
         let mut statements = vec![];
         let mut is_ended = false;
@@ -234,9 +237,15 @@ impl<T: Iterator<Item = LexResult>> Parse<T> for Declaration {
                 names.push(parser.expect_ident()?.into());
             }
 
-            let (_, names_type, _) = parser.parse_type_annotation(Token::Colon)?;
+            let (_, names_type, _end) = parser.parse_type_annotation(Token::Colon)?;
 
-            end = parser.expect_one(Token::Semicolon)?.1;
+            end = match parser.expect_one(Token::Semicolon) {
+                Ok((_, end)) => end,
+                Err(_) => return parse_error(
+                    ParseErrorType::MissingSemicolon, 
+                    SrcSpan { start: _end, end: _end }
+                )
+            };
 
             identifiers_vec.push(Identifiers {
                 names,
@@ -815,10 +824,11 @@ impl<T: Iterator<Item = LexResult>> Parse<T> for Expression {
                     Self::Identifier(Identifier::from((start, ident, end)))
                 },
                 Token::Bang => Self::Prefix(Prefix::parse(parser, None)?),
-                Token::Int(_) | Token::Float(_) | Token::Binary(_) | 
-                Token::Octal(_) | Token::Hexadecimal(_) | 
-                Token::String(_) | Token::True | Token::False => 
-                    Self::Primitive(Primitive::parse(parser, None)?),
+                Token::Int(_)
+                | Token::Float(_) 
+                | Token::String(_) 
+                | Token::True 
+                | Token::False => Self::Primitive(Primitive::parse(parser, None)?),
                 Token::LParen => {
                     let (start, _) = parser.expect_one(Token::LParen)?;
 
@@ -1055,41 +1065,13 @@ impl<T: Iterator<Item = LexResult>> Parse<T> for Primitive {
 
         match span {
             Some((start, token, end)) => match token {
-                Token::Binary(value) => {
-                    let value = i64::from_str_radix(&value, 2).unwrap();
-
-                    Ok(Self::Int {
-                        value,
-                        location: SrcSpan { start, end }
-                    })
-                },
-                Token::Octal(value) => {
-                    let value = i64::from_str_radix(&value, 8).unwrap();
-
-                    Ok(Self::Int {
-                        value,
-                        location: SrcSpan { start, end }
-                    })
-                },
                 Token::Int(value) => {
-                    let value = i64::from_str_radix(&value, 10).unwrap();
-
                     Ok(Self::Int {
                         value,
                         location: SrcSpan { start, end }
                     })
-                },
-                Token::Hexadecimal(value) => {
-                    let value = i64::from_str_radix(&value, 16).unwrap();
-
-                    Ok(Self::Int {
-                        value,
-                        location: SrcSpan { start, end }
-                    })
-                },
+                }
                 Token::Float(value) => {
-                    let value = value.parse().unwrap();
-
                     Ok(Self::Float {
                         value,
                         location: SrcSpan { start, end }

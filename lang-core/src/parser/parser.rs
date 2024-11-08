@@ -208,8 +208,13 @@ pub fn parse_module(src: &str) -> Result<Parsed, ParseError> {
     Ok(parsed)
 }
 
-pub fn parse_module_from_stream(stream: impl Iterator<Item = Result<char, std::io::Error>>) -> Result<Parsed, ParseError> {
-    let lexer = Lexer::new(stream.enumerate().map(|(i, c)| (i as u32, c.unwrap())));
+pub fn parse_module_from_stream(stream: impl Iterator<Item = char>) -> Result<Parsed, ParseError> {
+    let lexer = Lexer::new(stream
+        .scan(0, |pos, c| { 
+            *pos += c.len_utf8() as u32; 
+            Some((*pos - c.len_utf8() as u32, c)) 
+        })
+    );
     let mut parser = Parser::new(lexer);
     let parsed = parser.parse()?;
     
