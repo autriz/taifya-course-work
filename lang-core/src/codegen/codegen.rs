@@ -197,8 +197,8 @@ impl<'a, 'ctx> Codegen<'a, 'ctx> {
             },
             Operator::Conditional(conditional) => {
                 let parent = self.fn_value();
-                let one_const = self.context.i64_type().const_int(1, false);
-                let zero_const = self.context.i64_type().const_int(0, false);
+                let one_const = self.context.bool_type().const_int(1, false);
+                let zero_const = self.context.bool_type().const_int(0, false);
 
                 let mut incoming: Vec<(&dyn BasicValue<'ctx>, BasicBlock<'ctx>)> = vec![];
 
@@ -237,7 +237,7 @@ impl<'a, 'ctx> Codegen<'a, 'ctx> {
                 incoming.push((&zero_const, else_block));
                 self.builder.position_at_end(after_block);
 
-                let phi = self.builder.build_phi(self.context.i64_type(), "if_block").unwrap();
+                let phi = self.builder.build_phi(self.context.bool_type(), "if_block").unwrap();
 
                 phi.add_incoming(incoming.as_slice());
             },
@@ -414,6 +414,40 @@ impl<'a, 'ctx> Codegen<'a, 'ctx> {
                                 right.into_int_value(),
                                 "intcmp"
                             ).unwrap().into(),
+                            Token::Or => {
+                                let lhs = self.builder.build_int_compare(
+                                    IntPredicate::NE,
+                                    left.into_int_value(),
+                                    self.context.bool_type().const_zero(),
+                                    "lhs_or"
+                                ).unwrap();
+
+                                let rhs = self.builder.build_int_compare(
+                                    IntPredicate::NE,
+                                    right.into_int_value(),
+                                    self.context.bool_type().const_zero(),
+                                    "rhs_or"
+                                ).unwrap();
+
+                                self.builder.build_or(lhs, rhs, "intor").unwrap().into()
+                            },
+                            Token::And => {
+                                let lhs = self.builder.build_int_compare(
+                                    IntPredicate::NE,
+                                    left.into_int_value(),
+                                    self.context.bool_type().const_zero(),
+                                    "lhs_and"
+                                ).unwrap();
+
+                                let rhs = self.builder.build_int_compare(
+                                    IntPredicate::NE,
+                                    right.into_int_value(),
+                                    self.context.bool_type().const_zero(),
+                                    "rhs_and"
+                                ).unwrap();
+
+                                self.builder.build_and(lhs, rhs, "intand").unwrap().into()
+                            },
                             _ => return Err("Invalid operator")
                         }
                     }),
@@ -515,7 +549,7 @@ impl<'a, 'ctx> Codegen<'a, 'ctx> {
 
         self.builder.build_return(Some(&self.context.i32_type().const_zero())).unwrap();
 
-        println!("{:?}", self.global_strings);
+        // println!("{:?}", self.global_strings);
 
         if function.verify(true) {
             Ok(function)
