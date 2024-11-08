@@ -12,10 +12,12 @@ pub(crate) fn print_analyzed(duration: Duration) {
     print_colourful_prefix("Analyzed", Color::Green, &format!("in {}", seconds(duration)))
 }
 
+#[cfg(feature = "compiler")]
 pub(crate) fn print_compiling(text: &str) {
     print_colourful_prefix("Compiling", Color::Cyan, text);
 }
 
+#[cfg(feature = "compiler")]
 pub(crate) fn print_compiled(duration: Duration) {
     print_colourful_prefix("Compiled", Color::Green, &format!("in {}", seconds(duration)))
 }

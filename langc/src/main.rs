@@ -1,17 +1,32 @@
 mod cli;
 mod rlpl;
 mod rppl;
+#[cfg(feature = "compiler")]
 mod compiler;
+#[cfg(feature = "compiler")]
 use compiler::{ObjectCompiler, ObjectLinker};
 
 use std::{cell::RefCell, path::PathBuf, rc::Rc};
 
 use clap::Parser;
-use cli::{print_analyzed, print_analyzing, print_compiled, print_compiling};
-use inkwell::context::Context;
-use lang_core::{
-    analyzer::{analyze, analyze_from_stream}, codegen::prelude::Codegen, environment::prelude::Environment, eval::eval, utils::prelude::{Warning, WarningEmitterIO}
+use cli::{
+    print_analyzed, print_analyzing 
 };
+#[cfg(feature = "compiler")]
+use cli::{
+    print_compiled, print_compiling
+};
+#[cfg(feature = "compiler")]
+use inkwell::context::Context;
+#[allow(unused_imports)]
+use lang_core::{
+    analyzer::{analyze, analyze_from_stream},
+    environment::prelude::Environment, 
+    eval::eval, 
+    utils::prelude::{Warning, WarningEmitterIO}
+};
+#[cfg(feature = "compiler")]
+use lang_core::codegen::prelude::Codegen;
 
 #[derive(Parser)]
 enum Command {
@@ -31,6 +46,7 @@ enum Command {
     },
     /// Performs lexical, syntactical and semantical analysis
     /// and compiles it in executable file
+    #[cfg(feature = "compiler")]
     Compile {
         /// Path of source file
         path: PathBuf,
@@ -106,9 +122,10 @@ fn main() {
                 }
             };
         },
+        #[cfg(feature = "compiler")]
         Command::Compile { 
             path, 
-            output ,
+            output,
             obj,
             assembly
         } => {

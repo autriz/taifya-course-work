@@ -3,10 +3,13 @@ name = "langc"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+compiler = ["dep:inkwell", "dep:llvm-sys"]
+
 [dependencies]
 lang-core = { path = "../lang-core" }
 ctrlc = { version = "3", features = ["termination"] }
 clap = { version = "4.5.18", features = ["derive"] }
 termcolor = { workspace = true }
-inkwell = { workspace = true }
-llvm-sys = { workspace = true }
+inkwell = { workspace = true, optional = true }
+llvm-sys = { workspace = true, optional = true }
