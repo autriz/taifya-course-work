@@ -54,7 +54,7 @@ impl<T: Iterator<Item = (u32, char)>> Display for Lexer<T> {
 }
 
 impl<T: Iterator<Item = (u32, char)>> Lexer<T> {
-    pub fn new(input: T) -> Self {
+	pub fn new(input: T) -> Self {
         let mut lexer = Self {
             position: 0,
             next_position: 0,
@@ -76,7 +76,7 @@ impl<T: Iterator<Item = (u32, char)>> Lexer<T> {
 			Some(ch) => match ch {
 				'(' => {
 					if self.next_ch == Some('*') {
-						self.lex_comment()
+						return self.lex_comment();
 					} else {
 						self.eat_one_char(Token::LParen)
 					}
@@ -192,7 +192,7 @@ impl<T: Iterator<Item = (u32, char)>> Lexer<T> {
 
     fn next_char(&mut self) -> Option<char> {
 		let ch = self.ch;
-
+		
 		let next = match self.input.next() {
 			Some((pos, ch)) => {
 				self.position = self.next_position;
@@ -261,7 +261,7 @@ impl<T: Iterator<Item = (u32, char)>> Lexer<T> {
 					error: LexicalErrorType::UnexpectedStringEnd,
 					location: SrcSpan {
 						start,
-						end: start
+						end: self.position
 					}
 				})
 			}
@@ -361,7 +361,7 @@ impl<T: Iterator<Item = (u32, char)>> Lexer<T> {
 				if has_exponent {
 					if !has_number_before_exponent {
 						return Err(LexicalError {
-							error: LexicalErrorType::MissingNumberBeforeExponent,
+							error: LexicalErrorType::MissingDigitBeforeExponent,
 							location: SrcSpan::from(start_pos, end_pos)
 						});
 					}
@@ -384,7 +384,7 @@ impl<T: Iterator<Item = (u32, char)>> Lexer<T> {
 
 		let token = match expected_type {
 			NumberType::Binary => match i64::from_str_radix(&value, 2) {
-				Ok(_) => Token::Binary(value),
+				Ok(value) => Token::Int(value),
 				Err(_) => return Err(LexicalError {
 					error: if !has_period { 
 						LexicalErrorType::DigitOutOfRadix 
@@ -395,7 +395,7 @@ impl<T: Iterator<Item = (u32, char)>> Lexer<T> {
 				})
 			},
 			NumberType::Octal => match i64::from_str_radix(&value, 8) {
-				Ok(_) => Token::Octal(value),
+				Ok(value) => Token::Int(value),
 				Err(_) => return Err(LexicalError {
 					error: if !has_period { 
 						LexicalErrorType::DigitOutOfRadix 
@@ -406,7 +406,7 @@ impl<T: Iterator<Item = (u32, char)>> Lexer<T> {
 				})
 			},
 			NumberType::Hex => match i64::from_str_radix(&value, 16) {
-				Ok(_) => Token::Hexadecimal(value),
+				Ok(value) => Token::Int(value),
 				Err(_) => return Err(LexicalError {
 					error: if !has_period { 
 						LexicalErrorType::DigitOutOfRadix 
@@ -417,14 +417,14 @@ impl<T: Iterator<Item = (u32, char)>> Lexer<T> {
 				})
 			},
 			NumberType::Int => match i64::from_str_radix(&value, 10) {
-				Ok(_) => Token::Int(value),
+				Ok(value) => Token::Int(value),
 				Err(_) => return Err(LexicalError {
 					error: LexicalErrorType::DigitOutOfRadix,
 					location: SrcSpan::from(start_pos, end_pos)
 				})
 			},
 			NumberType::Float => match value.parse::<f64>() {
-				Ok(_) => Token::Float(value),
+				Ok(value) => Token::Float(value),
 				Err(_) => return Err(LexicalError {
 					error: LexicalErrorType::DigitOutOfRadix,
 					location: SrcSpan::from(start_pos, end_pos)
@@ -435,21 +435,27 @@ impl<T: Iterator<Item = (u32, char)>> Lexer<T> {
 		Ok((start_pos as u32, token, end_pos as u32))
 	}
 
-	fn lex_comment(&mut self) -> Spanned {
-		self.next_char();
-
-		let start_pos = self.next_position;
+	fn lex_comment(&mut self) -> LexResult {
+		let start_pos = self.position;
+		
+		self.next_char(); // skip lparen
+		self.next_char(); // skip asterisk
 
 		while (Some('*'), Some(')')) != (self.ch, self.next_ch) {
-			let _ = self.next_char();
+			if self.next_char().is_none() {
+				return Err(LexicalError {
+					error: LexicalErrorType::MissingCommentEnd,
+					location: SrcSpan::from(start_pos, self.position)
+				})
+			};
 		}
-
-		let end_pos = self.position;
 
 		self.next_char(); // skip asterisk
 		self.next_char(); // skip rparen
+		
+		let end_pos = self.position;
 
-		(start_pos as u32, Token::Comment, end_pos as u32)
+		Ok((start_pos as u32, Token::Comment, end_pos as u32))
 	}
 }
 

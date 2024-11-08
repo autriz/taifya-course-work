@@ -1,18 +1,15 @@
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Token {
     // <буква>{<буква>|<цифра>}
     Ident(String), 
-    // {/ <цифра> /}[D|d]
-    Int(String), 
-    // {/ 0|1 /}(B|b)
-    Binary(String), 
-    // {/ 0|1|2|3|4|5|6|7 /}(O|o)
-    Octal(String), 
-    // {/ <цифра>|A|B|C|D|E|F|a|b|c|d|e|f /}(H|h)
-    Hexadecimal(String), 
+    // radix 10: {/ <цифра> /}[D|d]
+    // radix 2: {/ 0|1 /}(B|b)
+    // radix 8: {/ 0|1|2|3|4|5|6|7 /}(O|o)
+    // radix 16: {/ <цифра>|A|B|C|D|E|F|a|b|c|d|e|f /}(H|h)
+    Int(i64),
     // <числовая_строка><порядок>|[<числовая_строка>].<числовая_строка>[<порядок>],
     // где <порядок>::= (E|e)[+|-]<числовая_строка>
-    Float(String), 
+    Float(f64), 
     // этого нету в задании, но пусть будет :)
     // <строка>::= '"'{ <буква> }'"'
     String(String),
@@ -80,67 +77,69 @@ pub enum Token {
 impl Token {
     pub fn is_reserved_word(&self) -> bool {
         match self {
-            Token::Var |
-            Token::Begin |
-            Token::End |
-            Token::If |
-            Token::Else |
-            Token::For |
-            Token::To |
-            Token::Step |
-            Token::While |
-            Token::Next |
-            Token::Readln |
-            Token::Writeln => true,
+            Token::Var
+            | Token::Begin
+            | Token::End
+            | Token::If
+            | Token::Else
+            | Token::For
+            | Token::To
+            | Token::Step
+            | Token::While
+            | Token::Next
+            | Token::True
+            | Token::False
+            | Token::Readln
+            | Token::Writeln => true,
             _ => false
         }
     }
 
     pub fn is_variable_type(&self) -> bool {
         match self {
-            Token::Percent | 
-            Token::Dollar | 
-            Token::Bang => true,
+            Token::Percent
+            | Token::Dollar
+            | Token::Bang => true,
             _ => false,
         }
     }
 
     pub fn is_ending(&self) -> bool {
         match self {
-            Token::End | 
-            Token::Semicolon |
-            Token::Next => true,
+            Token::End
+            | Token::Semicolon
+            | Token::Next => true,
             _ => false
         }
     }
 
     pub fn is_operator(&self) -> bool {
         match self {
-            Token::Plus |
-            Token::Minus |
-            Token::Or |
-            Token::Asterisk |
-            Token::Slash |
-            Token::And |
-            Token::Assign |
-            Token::Bang |
-            Token::Equal |
-            Token::NotEqual |
-            Token::LessThan |
-            Token::LessThanOrEqual |
-            Token::GreaterThan |
-            Token::GreaterThanOrEqual => true,
+            Token::Plus
+            | Token::Minus
+            | Token::Or
+            | Token::Asterisk
+            | Token::Slash
+            | Token::And
+            | Token::Assign
+            | Token::Bang
+            | Token::Equal
+            | Token::NotEqual
+            | Token::LessThan
+            | Token::LessThanOrEqual
+            | Token::GreaterThan
+            | Token::GreaterThanOrEqual => true,
             _ => false,
         }
     }
 
     pub fn is_delimeter(&self) -> bool {
         match self {
-            Token::LParen |
-            Token::RParen |
-            Token::Comma |
-            Token::Semicolon |
-            Token::Colon => true,
+            Token::LParen
+            | Token::RParen
+            | Token::Comma
+            | Token::Semicolon
+            | Token::Colon => true,
             _ => self.is_operator()
         }
     }
@@ -149,9 +148,6 @@ impl Token {
         match self {
             Token::Ident(value) => format!("{}", value),
             Token::Int(value) => format!("{}", value),
-            Token::Binary(value) => format!("{}", value),
-            Token::Octal(value) => format!("{}", value),
-            Token::Hexadecimal(value) => format!("{}", value),
             Token::Float(value) => format!("{}", value),
             Token::String(value) => format!("\"{}\"", value),
             Token::Comment => "Comment".to_string(),

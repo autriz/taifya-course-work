@@ -3,50 +3,37 @@ use super::prelude::{Lexer, LexicalError, LexicalErrorType, Token};
 #[test]
 fn test_numbers() -> std::result::Result<(), LexicalError> {
     let input = r#"
-        10;
-        125d;
-        196D;
-        01010b;
-        1001B;
-        5424o;
-        12367O;
-        1A3h;
-        1E5H;
-        10e5;
-        10.4E5;
-        .0e-5;
-        1.5;
+        10
+        125d
+        196D
+        01010b
+        1001B
+        5424o
+        12367O
+        1A3h
+        1E5H
+        10e5
+        10.4E5
+        .0e-5
+        1.5
     "#;
 
     let mut lexer = Lexer::new(input.char_indices().map(|(i, c)| (i as u32, c)));
 
     let tokens = vec![
-        Token::Int(String::from("10")),
-        Token::Semicolon,
-        Token::Int(String::from("125")),
-        Token::Semicolon,
-        Token::Int(String::from("196")),
-        Token::Semicolon,
-        Token::Binary(String::from("01010")),
-        Token::Semicolon,
-        Token::Binary(String::from("1001")),
-        Token::Semicolon,
-        Token::Octal(String::from("5424")),
-        Token::Semicolon,
-        Token::Octal(String::from("12367")),
-        Token::Semicolon,
-        Token::Hexadecimal(String::from("1A3")),
-        Token::Semicolon,
-        Token::Hexadecimal(String::from("1E5")),
-        Token::Semicolon,
-        Token::Float(String::from("10e5")),
-        Token::Semicolon,
-        Token::Float(String::from("10.4E5")),
-        Token::Semicolon,
-        Token::Float(String::from(".0e-5")),
-        Token::Semicolon,
-        Token::Float(String::from("1.5")),
-        Token::Semicolon,
+        Token::Int(10),
+        Token::Int(125),
+        Token::Int(196),
+        Token::Int(10),
+        Token::Int(9),
+        Token::Int(2836),
+        Token::Int(5367),
+        Token::Int(419),
+        Token::Int(485),
+        Token::Float(1000000.0),
+        Token::Float(1040000.0),
+        Token::Float(0.0),
+        Token::Float(1.5),
     ];
 
     for (idx, token) in tokens.iter().enumerate() {
@@ -126,7 +113,7 @@ fn test_invalid_numbers() -> std::result::Result<(), LexicalError> {
         LexicalErrorType::UnsupportedFloatingPoint,
         LexicalErrorType::UnsupportedFloatingPoint,
         LexicalErrorType::MultipleFloatingPoints,
-        LexicalErrorType::MissingNumberBeforeExponent,
+        LexicalErrorType::MissingDigitBeforeExponent,
         LexicalErrorType::MissingDigitsAfterExponent
     ];
 
@@ -213,7 +200,7 @@ end
 
         Token::Ident(String::from("a")),
         Token::Assign,
-        Token::Int(String::from("10")),
+        Token::Int(10),
         Token::Semicolon,
 
         Token::Ident(String::from("b")),
@@ -223,29 +210,29 @@ end
 
         Token::Ident(String::from("c")),
         Token::Assign,
-        Token::Float(String::from("10.54")),
+        Token::Float(10.54),
         Token::Semicolon,
 
         Token::Comment,
 
         Token::Ident(String::from("a")),
         Token::Plus,
-        Token::Ident(String::from("d")),
+        Token::Ident(String::from("c")),
         Token::Semicolon,
 
-        Token::Int(String::from("10")),
+        Token::Int(10),
         Token::Minus,
-        Token::Int(String::from("5")),
+        Token::Int(5),
         Token::Semicolon,
 
-        Token::Float(String::from(".5")),
+        Token::Float(0.5),
         Token::Slash,
-        Token::Float(String::from("5.0")),
+        Token::Float(5.0),
         Token::Semicolon,
 
-        Token::Float(String::from("2.104e5")),
+        Token::Float(210400.0),
         Token::Asterisk,
-        Token::Int(String::from("2")),
+        Token::Int(2),
         Token::Semicolon,
 
         Token::Ident(String::from("c")),
@@ -261,9 +248,9 @@ end
         Token::For,
         Token::Ident(String::from("i")),
         Token::Assign,
-        Token::Int(String::from("5")),
+        Token::Int(5),
         Token::To,
-        Token::Int(String::from("10")),
+        Token::Int(10),
         Token::Begin,
         Token::Writeln,
         Token::Ident(String::from("i")),
@@ -288,13 +275,13 @@ end
         Token::LParen,
         Token::Ident(String::from("a")),
         Token::GreaterThan,
-        Token::Int(String::from("5")),
+        Token::Int(5),
         Token::RParen,
         Token::Ident(String::from("a")),
         Token::Assign,
         Token::Ident(String::from("a")),
         Token::Minus,
-        Token::Int(String::from("1")),
+        Token::Int(1),
         Token::Semicolon,
 
         Token::End,

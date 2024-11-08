@@ -3,12 +3,13 @@ use crate::utils::prelude::SrcSpan;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LexicalErrorType {
     UnrecognizedToken { tok: char },
-    MissingNumberBeforeExponent,
+    MissingDigitBeforeExponent,
     MissingDigitsAfterExponent,
     MultipleFloatingPoints,
     DigitOutOfRadix,
     UnsupportedFloatingPoint,
     UnexpectedStringEnd,
+    MissingCommentEnd,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -23,8 +24,8 @@ impl LexicalError {
             LexicalErrorType::DigitOutOfRadix => {
                 ("This digit is too big for the specified radix", vec![])
             },
-            LexicalErrorType::MissingNumberBeforeExponent => {
-                ("Missing number before exponent", vec![])
+            LexicalErrorType::MissingDigitBeforeExponent => {
+                ("Missing a digit before exponent", vec![])
             },
             LexicalErrorType::MissingDigitsAfterExponent => {
                 ("Missing digits after exponent", vec![])
@@ -39,7 +40,10 @@ impl LexicalError {
                 ("This number doesn't support floating point variants", vec![])
             },
             LexicalErrorType::UnexpectedStringEnd => {
-                ("Unexpected string end", vec![])
+                (r#"Missing trailing `"` symbol to terminate the string literal"#, vec![])
+            },
+            LexicalErrorType::MissingCommentEnd => {
+                ("Missing trailing `*)` symbols to terminate comment", vec![])
             }
         }
     }
