@@ -29,8 +29,8 @@ impl ParseError {
         match &self.error {
             ParseErrorType::ExpectedIdent => ("Expected identifier", vec![]),
             ParseErrorType::ExpectedOperator => ("Expected operator", vec![]),
-            ParseErrorType::ExpectedBegin => ("Expected begin", vec![]),
-            ParseErrorType::ExpectedEnd => ("Expected end", vec![]),
+            ParseErrorType::ExpectedBegin => ("Expected `begin` keyword", vec![]),
+            ParseErrorType::ExpectedEnd => ("Expected `end` keyword", vec![]),
             ParseErrorType::UnexpectedSemicolonBeforeEnd => ("Unexpected semicolon before `end`", vec![]),
             ParseErrorType::ExpectedType => ("Expected type", vec![]),
             ParseErrorType::ExpectedValue => ("Expected value after `:=`", vec![]),

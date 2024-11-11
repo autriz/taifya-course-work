@@ -67,7 +67,7 @@ impl<T: Iterator<Item = LexResult>> Parse<T> for Program {
                         break 
                     },
                     (None, _) => return parse_error(
-                        ParseErrorType::UnexpectedEof, 
+                        ParseErrorType::ExpectedEnd, 
                         SrcSpan { start: 0, end: 0 }
                     ),
                     (Some((start, _, _)), _) => return parse_error(

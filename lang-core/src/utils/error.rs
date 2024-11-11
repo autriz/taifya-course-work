@@ -52,7 +52,7 @@ impl Error {
                 let (label, extra) = error.details();
                 let text = extra.join("\n");
 
-                let adjusted_location = if error.error == ParseErrorType::UnexpectedEof {
+                let adjusted_location = if matches!(error.error, ParseErrorType::UnexpectedEof | ParseErrorType::ExpectedEnd) {
                     SrcSpan {
                         start: src.len() as u32,
                         end: src.len() as u32,
