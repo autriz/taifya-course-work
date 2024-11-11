@@ -37,6 +37,9 @@ enum Command {
         /// Do not print parsed source code
         #[arg(short, long, default_value_t = false)]
         no_output: bool,
+        /// Print ast instead of parsed source code
+        #[arg(long, default_value_t = false)]
+        print_ast: bool,
     },
     /// Performs lexical, syntactical and semantical analysis
     /// and runs it in interpreter mode
@@ -68,7 +71,7 @@ enum Command {
 
 fn main() {
     let _ = match Command::parse() {
-        Command::Analyze { path, no_output } => {
+        Command::Analyze { path, no_output, print_ast } => {
             let warning_emitter = Rc::new(ConsoleWarningEmitter);
 
             let buf_writer = crate::cli::stderr_buffer_writer();
@@ -80,7 +83,11 @@ fn main() {
             match analyze_from_stream(path, warning_emitter.clone()) {
                 Ok(module) => {
                     if !no_output {
-                        println!("{}", module.program);
+                        if print_ast {
+                            println!("{:#?}", module.program);
+                        } else {
+                            println!("{}", module.program);
+                        }
                     }
                 },
                 Err(err) => {
