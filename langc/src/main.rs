@@ -10,7 +10,7 @@ use std::{cell::RefCell, path::PathBuf, rc::Rc};
 
 use clap::Parser;
 use cli::{
-    print_analyzed, print_analyzing 
+    print_analyzed, print_analyzing, print_running 
 };
 #[cfg(feature = "compiler")]
 use cli::{
@@ -111,11 +111,13 @@ fn main() {
             print_analyzing(path.to_str().unwrap());
             let start = std::time::Instant::now();
 
-            match analyze_from_stream(path, warning_emitter.clone()) {
+            match analyze_from_stream(path.clone(), warning_emitter.clone()) {
                 Ok(module) => {
                     print_analyzed(std::time::Instant::now() - start);
 
                     let env = Rc::new(RefCell::new(Environment::new()));
+
+                    print_running(path.to_str().unwrap());
 
                     eval(module, env);
                 },

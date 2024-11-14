@@ -159,6 +159,9 @@ pub enum Warning {
     },
     UnreachableWhileClause {
         location: SrcSpan
+    },
+    UnreachableCode {
+        location: SrcSpan
     }
 }
 
@@ -170,7 +173,8 @@ impl Warning {
             | Warning::UnreachableIfClause { location }
             | Warning::UnreachableElseClause { location }
             | Warning::InfiniteLoop { location }
-            | Warning::UnreachableWhileClause { location } => *location
+            | Warning::UnreachableWhileClause { location }
+            | Warning::UnreachableCode { location } => *location
         }
     }
 }

@@ -13,5 +13,4 @@ begin
     for a := 1 to 10 writeln a next;
 
     writeln a;
-    writeln a
 end

@@ -13,7 +13,6 @@ pub enum ParseErrorType {
         expected: Vec<String>,
     },
     ExpectedType,
-    ExpectedValue,
     MissingSemicolon,
     LexError { error: LexicalError },
 }
@@ -33,7 +32,6 @@ impl ParseError {
             ParseErrorType::ExpectedEnd => ("Expected `end` keyword", vec![]),
             ParseErrorType::UnexpectedSemicolonBeforeEnd => ("Unexpected semicolon before `end`", vec![]),
             ParseErrorType::ExpectedType => ("Expected type", vec![]),
-            ParseErrorType::ExpectedValue => ("Expected value after `:=`", vec![]),
             // ParseErrorType::UnexpectedReservedWord => ("Unexpected reserved word", vec![]),
             ParseErrorType::UnexpectedToken { token, expected } => {
                 let found = match token {

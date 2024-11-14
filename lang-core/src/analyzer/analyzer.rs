@@ -383,6 +383,7 @@ fn get_infix_type(
             | Token::GreaterThanOrEqual
             | Token::Equal
             | Token::NotEqual => ValueType::Boolean,
+            Token::Slash => ValueType::Float,
             _ => value_type
         },
         ValueType::Float => match infix.operator {

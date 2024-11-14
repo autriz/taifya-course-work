@@ -13,7 +13,7 @@ use std::{path::PathBuf, rc::Rc};
 use utf8_chars::BufReadCharsExt;
 
 use crate::{
-    analyzer::prelude::{ModuleAnalyzer, Outcome}, parser::{parser::parse_module_from_stream, prelude::{parse_module, Module}}, utils::prelude::{Error, TypeWarningEmitter, WarningEmitter, WarningEmitterIO}
+    analyzer::prelude::{ModuleAnalyzer, Outcome}, parser::{parser::parse_module_from_stream, prelude::{parse_module, Module}}, utils::prelude::{Error, SrcSpan, TypeWarningEmitter, WarningEmitter, WarningEmitterIO}
 };
 
 
@@ -97,6 +97,15 @@ pub fn analyze_from_stream(
         src.to_string(),
         warnings
     );
+
+    if parsed.module.program.location.end != src.len() as u32 {
+        warnings.emit(error::Warning::UnreachableCode { 
+            location: SrcSpan { 
+                start: parsed.module.program.location.end, 
+                end: src.len() as u32
+            }
+        });
+    }
 
     let outcome = ModuleAnalyzer::analyze(parsed.module, &warnings);
 

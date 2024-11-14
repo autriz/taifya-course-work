@@ -408,7 +408,7 @@ impl<T: Iterator<Item = LexResult>> Parse<T> for Nested {
                         break 
                     },
                     (None, _) => return parse_error(
-                        ParseErrorType::UnexpectedEof, 
+                        ParseErrorType::ExpectedEnd, 
                         SrcSpan { start: 0, end: 0 }
                     ),
                     (Some((start, _, _)), _) => return parse_error(
@@ -475,15 +475,9 @@ impl<T: Iterator<Item = LexResult>> Parse<T> for Assignment {
         let ident = parser.expect_ident()?;
         let start = ident.0;
 
-        let (_, end) = parser.expect_one(Token::Assign)?;
+        parser.expect_one(Token::Assign)?;
 
-        let value = match Expression::parse(parser, None) {
-            Ok(value) => value,
-            Err(_) => return parse_error(
-                ParseErrorType::ExpectedValue,
-                SrcSpan { start: end, end }
-            )
-        };
+        let value = Expression::parse(parser, None)?;
         let end = value.location().end;
 
         Ok(Self {

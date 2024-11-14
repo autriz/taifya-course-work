@@ -221,7 +221,7 @@ fn eval_infix(
                 Token::Plus => Value::Integer { value: left_value + right_value },
                 Token::Minus => Value::Integer { value: left_value - right_value },
                 Token::Asterisk => Value::Integer { value: left_value * right_value },
-                Token::Slash => Value::Integer { value: left_value / right_value },
+                Token::Slash => Value::Float { value: left_value as f64 / right_value as f64 },
                 Token::LessThan => Value::Boolean { value: left_value < right_value },
                 Token::LessThanOrEqual => Value::Boolean { value: left_value <= right_value },
                 Token::GreaterThan => Value::Boolean { value: left_value > right_value },

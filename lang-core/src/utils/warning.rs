@@ -248,6 +248,22 @@ impl Warning {
                             extra_labels: vec![]
                         }),
                     }
+                },
+                AnalyzerWarning::UnreachableCode { location } => {
+                    Diagnostic {
+                        title: "Unreachable code".into(),
+                        text: "".into(),
+                        level: Level::Warning,
+                        location: Some(Location {
+                            src: &src,
+                            path: path.to_path_buf(),
+                            label: Label {
+                                text: None,
+                                span: *location,
+                            },
+                            extra_labels: vec![]
+                        }),
+                    }
                 }
             }
         }

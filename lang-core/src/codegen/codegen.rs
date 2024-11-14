@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use inkwell::{basic_block::BasicBlock, builder::Builder, context::Context, module::Module, types::BasicTypeEnum, values::{BasicValue, BasicValueEnum, FunctionValue, InstructionOpcode, PointerValue}, AddressSpace, IntPredicate};
+use inkwell::{basic_block::BasicBlock, builder::Builder, context::Context, module::Module, types::BasicTypeEnum, values::{BasicValue, BasicValueEnum, FunctionValue, InstructionOpcode, PointerValue}, AddressSpace, FloatPredicate, IntPredicate};
 use super::variable::Variable;
 
 use crate::{parser::prelude::{Declaration, Expression, IdentifierType, Operator, Primitive, Program, Statement}, lexer::prelude::Token};
@@ -373,11 +373,25 @@ impl<'a, 'ctx> Codegen<'a, 'ctx> {
                                 right.into_int_value(),
                                 "intmul"
                             ).unwrap().into(),
-                            Token::Slash => self.builder.build_int_signed_div(
-                                left.into_int_value(),
-                                right.into_int_value(),
-                                "intdiv"
-                            ).unwrap().into(),
+                            Token::Slash => {
+                                let float_type = self.context.f64_type();
+                                let left_cast = self.builder.build_unsigned_int_to_float(
+                                    left.into_int_value(), 
+                                    float_type, 
+                                    "intdiv_lcast"
+                                ).unwrap();
+                                let right_cast = self.builder.build_unsigned_int_to_float(
+                                    right.into_int_value(),
+                                    float_type, 
+                                    "intdiv_rcast"
+                                ).unwrap();
+
+                                self.builder.build_float_div(
+                                    left_cast,
+                                    right_cast,
+                                    "intdiv"
+                                ).unwrap().into()
+                            },
                             Token::LessThan => self.builder.build_int_compare(
                                 IntPredicate::SLT, 
                                 left.into_int_value(),
@@ -453,37 +467,37 @@ impl<'a, 'ctx> Codegen<'a, 'ctx> {
                     }),
                     BasicTypeEnum::FloatType(_) => Ok({
                         match infix.operator {
-                            Token::Plus => self.builder.build_int_add(
-                                left.into_int_value(), 
-                                right.into_int_value(), 
-                                "intadd"
+                            Token::Plus => self.builder.build_float_add(
+                                left.into_float_value(), 
+                                right.into_float_value(), 
+                                "floatadd"
                             ).unwrap().into(),
-                            Token::Minus => self.builder.build_int_sub(
-                                left.into_int_value(), 
-                                right.into_int_value(), 
-                                "intsub"
+                            Token::Minus => self.builder.build_float_sub(
+                                left.into_float_value(), 
+                                right.into_float_value(), 
+                                "floatsub"
                             ).unwrap().into(),
-                            Token::Asterisk => self.builder.build_int_mul(
-                                left.into_int_value(),
-                                right.into_int_value(),
-                                "intmul"
+                            Token::Asterisk => self.builder.build_float_mul(
+                                left.into_float_value(),
+                                right.into_float_value(),
+                                "floatmul"
                             ).unwrap().into(),
-                            Token::Slash => self.builder.build_int_signed_div(
-                                left.into_int_value(),
-                                right.into_int_value(),
-                                "intdiv"
+                            Token::Slash => self.builder.build_float_div(
+                                left.into_float_value(),
+                                right.into_float_value(),
+                                "floatdiv"
                             ).unwrap().into(),
-                            Token::LessThan => self.builder.build_int_compare(
-                                IntPredicate::SLT, 
-                                left.into_int_value(),
-                                right.into_int_value(),
-                                "intcmp"
+                            Token::LessThan => self.builder.build_float_compare(
+                                FloatPredicate::OLT, 
+                                left.into_float_value(),
+                                right.into_float_value(),
+                                "floatcmp"
                             ).unwrap().into(),
-                            Token::GreaterThan => self.builder.build_int_compare(
-                                IntPredicate::SGT, 
-                                left.into_int_value(),
-                                right.into_int_value(),
-                                "intcmp"
+                            Token::GreaterThan => self.builder.build_float_compare(
+                                FloatPredicate::OGT, 
+                                left.into_float_value(),
+                                right.into_float_value(),
+                                "floatcmp"
                             ).unwrap().into(),
                             _ => return Err("Invalid operator")
                         }

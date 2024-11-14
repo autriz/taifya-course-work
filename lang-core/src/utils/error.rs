@@ -87,14 +87,14 @@ impl Error {
                                 let text = format!("Invalid unary operation: `{}`", token.as_literal());
 
                                 diagnostics.push(Diagnostic {
-                                    title: "Type mismatch".into(),
+                                    title: "Invalid token".into(),
                                     text,
                                     level: Level::Error,
                                     location: Some(Location {
                                         src: &src,
                                         path: path.clone(),
                                         label: Label {
-                                            text: None,
+                                            text: Some("Expected `!`".to_string()),
                                             span: *location,
                                         },
                                         extra_labels: vec![]
