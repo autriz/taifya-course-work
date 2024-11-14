@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use inkwell::{basic_block::BasicBlock, builder::Builder, context::Context, module::Module, types::BasicTypeEnum, values::{BasicValue, BasicValueEnum, FunctionValue, InstructionOpcode, PointerValue}, AddressSpace, FloatPredicate, IntPredicate};
+use inkwell::{builder::Builder, context::Context, module::Module, types::BasicTypeEnum, values::{BasicValue, BasicValueEnum, FunctionValue, InstructionOpcode, PointerValue}, AddressSpace, FloatPredicate, IntPredicate};
 use super::variable::Variable;
 
 use crate::{parser::prelude::{Declaration, Expression, IdentifierType, Operator, Primitive, Program, Statement}, lexer::prelude::Token};
@@ -13,14 +13,8 @@ fn printf_prototype<'ctx>(ctx: &'ctx Context, module: &Module<'ctx>) -> Function
         true
     );
 
-    let printf = match module.get_function("printf") {
-        Some(printf) => printf,
-        None => {
-            module.add_function("printf", printf_type, None)
-        }
-    };
-
-    printf
+    module.get_function("printf")
+        .unwrap_or_else(|| module.add_function("printf", printf_type, None))
 }
 
 fn scanf_prototype<'ctx>(ctx: &'ctx Context, module: &Module<'ctx>) -> FunctionValue<'ctx> {
@@ -31,14 +25,20 @@ fn scanf_prototype<'ctx>(ctx: &'ctx Context, module: &Module<'ctx>) -> FunctionV
         true
     );
 
-    let scanf = match module.get_function("scanf") {
-        Some(scanf) => scanf,
-        None => {
-            module.add_function("scanf", scanf_type, None)
-        }
-    };
+    module.get_function("scanf")
+        .unwrap_or_else(|| module.add_function("scanf", scanf_type, None))
+}
 
-    scanf
+fn fflush_prototype<'ctx>(ctx: &'ctx Context, module: &Module<'ctx>) -> FunctionValue<'ctx> {
+    let fflush_type = ctx.i32_type().fn_type(
+        &[
+            ctx.ptr_type(AddressSpace::default()).into()
+        ],
+        false
+    );
+
+    module.get_function("fflush")
+        .unwrap_or_else(|| module.add_function("fflush", fflush_type, None))
 }
 
 pub struct Codegen<'a, 'ctx> {
@@ -55,6 +55,7 @@ pub struct Codegen<'a, 'ctx> {
     // built-in functions
     printf_fn: FunctionValue<'ctx>,
     scanf_fn: FunctionValue<'ctx>,
+    fflush_fn: FunctionValue<'ctx>
 }
 
 impl<'a, 'ctx> Codegen<'a, 'ctx> {
@@ -80,18 +81,18 @@ impl<'a, 'ctx> Codegen<'a, 'ctx> {
 
     fn compile_declaration(&mut self, declaration: &Declaration) {
         for identifiers in &declaration.identifiers {
+            let basic_type = self.get_basic_type(identifiers.names_type);
+            
             for name in &identifiers.names {
                 let name = &name.value;
-                let basic_type = self.get_basic_type(identifiers.names_type);
-
                 let alloca = self.builder.build_alloca(basic_type, name)
                     .unwrap();
 
                 self.variables.insert(
                     name.to_string(), 
                     Variable::new(
-                        identifiers.names_type, 
-                        basic_type, 
+                        identifiers.names_type,
+                        basic_type,
                         alloca
                     )
                 );
@@ -109,104 +110,102 @@ impl<'a, 'ctx> Codegen<'a, 'ctx> {
                 self.builder.build_store(variable.pointer, value).unwrap();
             },
             Operator::Nested(nested) => {
-                if nested.operators.is_empty() {
-                    return;
-                }
-
-                for operator in &nested.operators {
-                    self.compile_operator(operator);
+                if !nested.operators.is_empty() {
+                    for operator in &nested.operators {
+                        self.compile_operator(operator);
+                    }
                 }
             },
             Operator::Input(input) => {
-                let mut identifiers = vec![];
+                let block = self.context.append_basic_block(
+                    self.fn_value(),
+                    "input"
+                );
+                self.builder.build_unconditional_branch(block).unwrap();
+                self.builder.position_at_end(block);
 
-                let formatted_string = input.identifiers.iter().map(|identifier| {
+                // let mut identifiers = vec![];
+                // let mut format_parts = Vec::with_capacity(input.identifiers.len());
+
+                for identifier in &input.identifiers {
                     let variable = self.variables.get(&identifier.value)
                         .expect("Variable should be defined");
 
-                    identifiers.push(variable.pointer.as_basic_value_enum().into());
-
-                    match &variable.var_type {
+                    let formatted_string = match variable.var_type {
                         IdentifierType::Int => "%ld",
-                        IdentifierType::Float => "%lf",
+                        IdentifierType::Float => "%lf", 
                         IdentifierType::Bool => "%d"
-                    }
-                }).collect::<Vec<&str>>();
+                    };
 
-                let formatted_string = formatted_string.join(", ");
-
-                let string_ptr = match self.global_strings.get(&formatted_string) {
-                    Some(string_ptr) => *string_ptr,
-                    None => {
-                        let _ = self.global_strings.insert(formatted_string.to_string(), unsafe {
+                    let string_ptr = *self.global_strings.entry(formatted_string.to_string())
+                        .or_insert_with(|| unsafe {
                             self.builder.build_global_string(&formatted_string, "").unwrap().as_pointer_value()
                         });
 
-                        *self.global_strings.get(&formatted_string).unwrap()
-                    }
-                };
+                    let args = [string_ptr.into(), variable.pointer.into()];
 
-                let mut args = vec![string_ptr.into()];
-                args.append(&mut identifiers);
-
-                let _ = self.builder.build_direct_call(
-                    self.scanf_fn, 
-                    &args, 
-                    "scanf"
-                ).unwrap();
+                    self.builder.build_direct_call(
+                        self.scanf_fn,
+                        &args,
+                        "scanf"
+                    ).unwrap();
+                }
             },
             Operator::Output(output) => {
                 let mut expressions = vec![];
+                let mut format_parts = Vec::with_capacity(output.expressions.len());
 
-                let formatted_string = output.expressions.iter().map(|expression| {
+                for expression in &output.expressions {
                     let compiled_expr = self.compile_expression(expression)
                         .unwrap();
 
                     expressions.push(compiled_expr.into());
 
-                    match &compiled_expr {
+                    format_parts.push(match compiled_expr {
                         BasicValueEnum::IntValue(_) => "%ld",
                         BasicValueEnum::FloatValue(_) => "%lf",
-                        BasicValueEnum::PointerValue(_) => "%s",
-                        BasicValueEnum::ArrayValue(_) => "%s",
-                        _ => unreachable!("Should not be an another basic type")
-                    }
-                }).collect::<Vec<&str>>();
+                        BasicValueEnum::PointerValue(_) | BasicValueEnum::ArrayValue(_) => "%s",
+                        _ => unreachable!("Should not be another basic type")
+                    });
+                }
 
-                let formatted_string = format!("{}\n", formatted_string.join(""));
+                let formatted_string = format!("{}\n", format_parts.join(""));
 
-                let string_ptr = match self.global_strings.get(&formatted_string) {
-                    Some(string_ptr) => *string_ptr,
-                    None => {
-                        let _ = self.global_strings.insert(formatted_string.to_string(), unsafe {
-                            self.builder.build_global_string(&formatted_string, "").unwrap().as_pointer_value()
-                        });
-
-                        *self.global_strings.get(&formatted_string).unwrap()
-                    }
-                };
+                let string_ptr = *self.global_strings.entry(formatted_string.clone())
+                    .or_insert_with(|| unsafe {
+                        self.builder.build_global_string(&formatted_string, "").unwrap().as_pointer_value()
+                    });
 
                 let mut args = vec![string_ptr.into()];
                 args.append(&mut expressions);
 
-                let _ = self.builder.build_direct_call(
-                    self.printf_fn, 
-                    &args, 
+                self.builder.build_direct_call(
+                    self.printf_fn,
+                    &args,
                     "printf"
+                ).unwrap();
+
+                let stdout_ptr = self.builder.build_int_to_ptr(
+                    self.context.i64_type().const_zero(),
+                    self.context.ptr_type(AddressSpace::default()),
+                    "stdout"
+                ).unwrap();
+
+                self.builder.build_direct_call(
+                    self.fflush_fn,
+                    &[stdout_ptr.into()],
+                    "fflush"
                 ).unwrap();
             },
             Operator::Conditional(conditional) => {
                 let parent = self.fn_value();
                 let one_const = self.context.bool_type().const_int(1, false);
-                let zero_const = self.context.bool_type().const_int(0, false);
-
-                let mut incoming: Vec<(&dyn BasicValue<'ctx>, BasicBlock<'ctx>)> = vec![];
 
                 let condition = self.compile_expression(&conditional.condition).unwrap();
                 let condition = self.builder.build_int_compare(
-                    IntPredicate::EQ, 
-                    condition.into_int_value(), 
-                    one_const, 
+                    IntPredicate::EQ,
+                    condition.into_int_value(),
+                    one_const,
                     "if_cond"
                 ).unwrap();
 
@@ -215,31 +214,18 @@ impl<'a, 'ctx> Codegen<'a, 'ctx> {
                 let after_block = self.context.append_basic_block(parent, "if_after");
 
                 self.builder.build_conditional_branch(condition, then_block, else_block).unwrap();
-                
+
                 self.builder.position_at_end(then_block);
                 self.compile_operator(&conditional.resolution);
                 self.builder.build_unconditional_branch(after_block).unwrap();
 
-                let then_block = self.builder.get_insert_block().unwrap();
-                
-                incoming.push((&zero_const, then_block));
-
                 self.builder.position_at_end(else_block);
-
-                if conditional.alternative.is_some() {
-                    self.compile_operator(&conditional.alternative.as_ref().unwrap());
+                if let Some(alt) = &conditional.alternative {
+                    self.compile_operator(alt);
                 }
-
                 self.builder.build_unconditional_branch(after_block).unwrap();
-                
-                let else_block = self.builder.get_insert_block().unwrap();
-                
-                incoming.push((&zero_const, else_block));
+
                 self.builder.position_at_end(after_block);
-
-                let phi = self.builder.build_phi(self.context.bool_type(), "if_block").unwrap();
-
-                phi.add_incoming(incoming.as_slice());
             },
             Operator::ConditionalLoop(loop_) => {
                 let parent = self.fn_value();
@@ -254,9 +240,9 @@ impl<'a, 'ctx> Codegen<'a, 'ctx> {
 
                 let condition = self.compile_expression(&loop_.condition).unwrap();
                 let condition = self.builder.build_int_compare(
-                    IntPredicate::EQ, 
-                    condition.into_int_value(), 
-                    true_const, 
+                    IntPredicate::EQ,
+                    condition.into_int_value(),
+                    true_const,
                     "while_cond"
                 ).unwrap();
 
@@ -265,9 +251,7 @@ impl<'a, 'ctx> Codegen<'a, 'ctx> {
                     loop_block, 
                     after_block
                 ).unwrap();
-
                 self.builder.position_at_end(loop_block);
-
                 self.compile_operator(&loop_.block);
 
                 if let Some(last_instruction) = loop_block.get_last_instruction() {
@@ -296,10 +280,9 @@ impl<'a, 'ctx> Codegen<'a, 'ctx> {
 
                 self.compile_operator(&loop_.block);
 
-                let step = match &loop_.step {
-                    Some(step) => self.compile_expression(step).unwrap().into_int_value(),
-                    None => self.context.i64_type().const_int(1, false)
-                };
+                let step = loop_.step.as_ref()
+                    .map(|step| self.compile_expression(step).unwrap().into_int_value())
+                    .unwrap_or_else(|| self.context.i64_type().const_int(1, false));
 
                 let to = self.compile_expression(&loop_.to).unwrap().into_int_value();
 
@@ -318,8 +301,8 @@ impl<'a, 'ctx> Codegen<'a, 'ctx> {
 
                 let end_condition = self.builder.build_int_compare(
                     IntPredicate::SLT,
-                    cur_value.into_int_value(), 
-                    to, 
+                    cur_value.into_int_value(),
+                    to,
                     "for_cond"
                 ).unwrap();
 
@@ -336,211 +319,198 @@ impl<'a, 'ctx> Codegen<'a, 'ctx> {
     fn compile_expression(&mut self, expression: &Expression) -> Result<BasicValueEnum<'ctx>, &'static str> {
         match expression {
             Expression::Identifier(ident) => {
-                match self.variables.get(&ident.value) {
-                    Some(variable) => Ok(
-                        self.builder.build_load(
-                            variable.basic_type, 
-                            variable.pointer, 
-                            &ident.value
-                        ).unwrap()
-                    ),
-                    None => Err("Could not find a matching variable")
-                }
+                self.variables.get(&ident.value)
+                    .map(|variable| self.builder.build_load(
+                        variable.basic_type,
+                        variable.pointer,
+                        &ident.value
+                    ).unwrap())
+                    .ok_or("Could not find a matching variable")
             },
             Expression::Infix(infix) => {
-                let left = self.compile_expression(&infix.left).unwrap();
-                let right = self.compile_expression(&infix.right).unwrap();
+                let left = self.compile_expression(&infix.left)?;
+                let right = self.compile_expression(&infix.right)?;
 
                 if left.get_type() != right.get_type() {
-                    return Err("Value mismatch")
+                    return Err("Value mismatch");
                 }
 
                 match left.get_type() {
-                    BasicTypeEnum::IntType(_) => Ok({
-                        match infix.operator {
-                            Token::Plus => self.builder.build_int_add(
+                    BasicTypeEnum::IntType(_) => Ok(match infix.operator {
+                        Token::Plus => self.builder.build_int_add(
+                            left.into_int_value(), 
+                            right.into_int_value(), 
+                            "intadd"
+                        ).unwrap().into(),
+                        Token::Minus => self.builder.build_int_sub(
+                            left.into_int_value(), 
+                            right.into_int_value(), 
+                            "intsub"
+                        ).unwrap().into(),
+                        Token::Asterisk => self.builder.build_int_mul(
+                            left.into_int_value(),
+                            right.into_int_value(),
+                            "intmul"
+                        ).unwrap().into(),
+                        Token::Slash => {
+                            let float_type = self.context.f64_type();
+                            let left_cast = self.builder.build_unsigned_int_to_float(
                                 left.into_int_value(), 
-                                right.into_int_value(), 
-                                "intadd"
-                            ).unwrap().into(),
-                            Token::Minus => self.builder.build_int_sub(
-                                left.into_int_value(), 
-                                right.into_int_value(), 
-                                "intsub"
-                            ).unwrap().into(),
-                            Token::Asterisk => self.builder.build_int_mul(
-                                left.into_int_value(),
+                                float_type, 
+                                "intdiv_lcast"
+                            ).unwrap();
+                            let right_cast = self.builder.build_unsigned_int_to_float(
                                 right.into_int_value(),
-                                "intmul"
-                            ).unwrap().into(),
-                            Token::Slash => {
-                                let float_type = self.context.f64_type();
-                                let left_cast = self.builder.build_unsigned_int_to_float(
-                                    left.into_int_value(), 
-                                    float_type, 
-                                    "intdiv_lcast"
-                                ).unwrap();
-                                let right_cast = self.builder.build_unsigned_int_to_float(
-                                    right.into_int_value(),
-                                    float_type, 
-                                    "intdiv_rcast"
-                                ).unwrap();
+                                float_type, 
+                                "intdiv_rcast"
+                            ).unwrap();
 
-                                self.builder.build_float_div(
-                                    left_cast,
-                                    right_cast,
-                                    "intdiv"
-                                ).unwrap().into()
-                            },
-                            Token::LessThan => self.builder.build_int_compare(
-                                IntPredicate::SLT, 
+                            self.builder.build_float_div(
+                                left_cast,
+                                right_cast,
+                                "intdiv"
+                            ).unwrap().into()
+                        },
+                        Token::LessThan => self.builder.build_int_compare(
+                            IntPredicate::SLT, 
+                            left.into_int_value(),
+                            right.into_int_value(),
+                            "intcmp"
+                        ).unwrap().into(),
+                        Token::LessThanOrEqual => self.builder.build_int_compare(
+                            IntPredicate::SLE, 
+                            left.into_int_value(),
+                            right.into_int_value(),
+                            "intcmp"
+                        ).unwrap().into(),
+                        Token::GreaterThan => self.builder.build_int_compare(
+                            IntPredicate::SGT, 
+                            left.into_int_value(),
+                            right.into_int_value(),
+                            "intcmp"
+                        ).unwrap().into(),
+                        Token::GreaterThanOrEqual => self.builder.build_int_compare(
+                            IntPredicate::SGE, 
+                            left.into_int_value(),
+                            right.into_int_value(),
+                            "intcmp"
+                        ).unwrap().into(),
+                        Token::Equal => self.builder.build_int_compare(
+                            IntPredicate::EQ, 
+                            left.into_int_value(),
+                            right.into_int_value(),
+                            "intcmp"
+                        ).unwrap().into(),
+                        Token::NotEqual => self.builder.build_int_compare(
+                            IntPredicate::NE, 
+                            left.into_int_value(),
+                            right.into_int_value(),
+                            "intcmp"
+                        ).unwrap().into(),
+                        Token::Or => {
+                            let lhs = self.builder.build_int_compare(
+                                IntPredicate::NE,
                                 left.into_int_value(),
-                                right.into_int_value(),
-                                "intcmp"
-                            ).unwrap().into(),
-                            Token::LessThanOrEqual => self.builder.build_int_compare(
-                                IntPredicate::SLE, 
-                                left.into_int_value(),
-                                right.into_int_value(),
-                                "intcmp"
-                            ).unwrap().into(),
-                            Token::GreaterThan => self.builder.build_int_compare(
-                                IntPredicate::SGT, 
-                                left.into_int_value(),
-                                right.into_int_value(),
-                                "intcmp"
-                            ).unwrap().into(),
-                            Token::GreaterThanOrEqual => self.builder.build_int_compare(
-                                IntPredicate::SGE, 
-                                left.into_int_value(),
-                                right.into_int_value(),
-                                "intcmp"
-                            ).unwrap().into(),
-                            Token::Equal => self.builder.build_int_compare(
-                                IntPredicate::EQ, 
-                                left.into_int_value(),
-                                right.into_int_value(),
-                                "intcmp"
-                            ).unwrap().into(),
-                            Token::NotEqual => self.builder.build_int_compare(
-                                IntPredicate::NE, 
-                                left.into_int_value(),
-                                right.into_int_value(),
-                                "intcmp"
-                            ).unwrap().into(),
-                            Token::Or => {
-                                let lhs = self.builder.build_int_compare(
-                                    IntPredicate::NE,
-                                    left.into_int_value(),
-                                    self.context.bool_type().const_zero(),
-                                    "lhs_or"
-                                ).unwrap();
+                                self.context.bool_type().const_zero(),
+                                "lhs_or"
+                            ).unwrap();
 
-                                let rhs = self.builder.build_int_compare(
-                                    IntPredicate::NE,
-                                    right.into_int_value(),
-                                    self.context.bool_type().const_zero(),
-                                    "rhs_or"
-                                ).unwrap();
+                            let rhs = self.builder.build_int_compare(
+                                IntPredicate::NE,
+                                right.into_int_value(),
+                                self.context.bool_type().const_zero(),
+                                "rhs_or"
+                            ).unwrap();
 
-                                self.builder.build_or(lhs, rhs, "intor").unwrap().into()
-                            },
-                            Token::And => {
-                                let lhs = self.builder.build_int_compare(
-                                    IntPredicate::NE,
-                                    left.into_int_value(),
-                                    self.context.bool_type().const_zero(),
-                                    "lhs_and"
-                                ).unwrap();
+                            self.builder.build_or(lhs, rhs, "intor").unwrap().into()
+                        },
+                        Token::And => {
+                            let lhs = self.builder.build_int_compare(
+                                IntPredicate::NE,
+                                left.into_int_value(),
+                                self.context.bool_type().const_zero(),
+                                "lhs_and"
+                            ).unwrap();
 
-                                let rhs = self.builder.build_int_compare(
-                                    IntPredicate::NE,
-                                    right.into_int_value(),
-                                    self.context.bool_type().const_zero(),
-                                    "rhs_and"
-                                ).unwrap();
+                            let rhs = self.builder.build_int_compare(
+                                IntPredicate::NE,
+                                right.into_int_value(),
+                                self.context.bool_type().const_zero(),
+                                "rhs_and"
+                            ).unwrap();
 
-                                self.builder.build_and(lhs, rhs, "intand").unwrap().into()
-                            },
-                            _ => return Err("Invalid operator")
-                        }
+                            self.builder.build_and(lhs, rhs, "intand").unwrap().into()
+                        },
+                        _ => return Err("Invalid operator")
                     }),
-                    BasicTypeEnum::FloatType(_) => Ok({
-                        match infix.operator {
-                            Token::Plus => self.builder.build_float_add(
-                                left.into_float_value(), 
-                                right.into_float_value(), 
-                                "floatadd"
-                            ).unwrap().into(),
-                            Token::Minus => self.builder.build_float_sub(
-                                left.into_float_value(), 
-                                right.into_float_value(), 
-                                "floatsub"
-                            ).unwrap().into(),
-                            Token::Asterisk => self.builder.build_float_mul(
-                                left.into_float_value(),
-                                right.into_float_value(),
-                                "floatmul"
-                            ).unwrap().into(),
-                            Token::Slash => self.builder.build_float_div(
-                                left.into_float_value(),
-                                right.into_float_value(),
-                                "floatdiv"
-                            ).unwrap().into(),
-                            Token::LessThan => self.builder.build_float_compare(
-                                FloatPredicate::OLT, 
-                                left.into_float_value(),
-                                right.into_float_value(),
-                                "floatcmp"
-                            ).unwrap().into(),
-                            Token::GreaterThan => self.builder.build_float_compare(
-                                FloatPredicate::OGT, 
-                                left.into_float_value(),
-                                right.into_float_value(),
-                                "floatcmp"
-                            ).unwrap().into(),
-                            _ => return Err("Invalid operator")
-                        }
+                    BasicTypeEnum::FloatType(_) => Ok(match infix.operator {
+                        Token::Plus => self.builder.build_float_add(
+                            left.into_float_value(), 
+                            right.into_float_value(), 
+                            "floatadd"
+                        ).unwrap().into(),
+                        Token::Minus => self.builder.build_float_sub(
+                            left.into_float_value(), 
+                            right.into_float_value(), 
+                            "floatsub"
+                        ).unwrap().into(),
+                        Token::Asterisk => self.builder.build_float_mul(
+                            left.into_float_value(),
+                            right.into_float_value(),
+                            "floatmul"
+                        ).unwrap().into(),
+                        Token::Slash => self.builder.build_float_div(
+                            left.into_float_value(),
+                            right.into_float_value(),
+                            "floatdiv"
+                        ).unwrap().into(),
+                        Token::LessThan => self.builder.build_float_compare(
+                            FloatPredicate::OLT, 
+                            left.into_float_value(),
+                            right.into_float_value(),
+                            "floatcmp"
+                        ).unwrap().into(),
+                        Token::GreaterThan => self.builder.build_float_compare(
+                            FloatPredicate::OGT, 
+                            left.into_float_value(),
+                            right.into_float_value(),
+                            "floatcmp"
+                        ).unwrap().into(),
+                        _ => return Err("Invalid operator")
                     }),
-                    _ => return Err("Invalid infix operation")
+                    _ => Err("Invalid infix operation")
                 }
             },
             Expression::Prefix(prefix) => {
-                let op = &prefix.operator;
-                let expr = self.compile_expression(&prefix.expression).unwrap();
-
-                let value = match op {
-                    Token::Bang => expr.into_int_value()
+                let expr = self.compile_expression(&prefix.expression)?;
+                match prefix.operator {
+                    Token::Bang => Ok(expr.into_int_value()
                         .const_neg()
-                        .as_basic_value_enum(),
-                    _ => return Err("Unexpected prefix operator"),
-                };
-
-                Ok(value)
+                        .as_basic_value_enum()
+                    ),
+                    _ => Err("Unexpected prefix operator")
+                }
             },
             Expression::Nested { expression, .. } => self.compile_expression(expression),
-            Expression::Primitive(primitive) => match primitive {
-                Primitive::Int { value, .. } => {
-                    Ok(self.context.i64_type().const_int(*value as u64, false).as_basic_value_enum())
-                },
-                Primitive::Float { value, .. } => Ok(self.context.f64_type().const_float(*value).as_basic_value_enum()),
-                Primitive::Bool { value: true, .. } => Ok(self.context.bool_type().const_int(1, false).as_basic_value_enum()),
-                Primitive::Bool { value: false, .. } => Ok(self.context.bool_type().const_int(0, false).as_basic_value_enum()),
+            Expression::Primitive(primitive) => Ok(match primitive {
+                Primitive::Int { value, .. } => self.context.i64_type()
+                    .const_int(*value as u64, false)
+                    .as_basic_value_enum(),
+                Primitive::Float { value, .. } => self.context.f64_type()
+                    .const_float(*value)
+                    .as_basic_value_enum(),
+                Primitive::Bool { value, .. } => self.context.bool_type()
+                    .const_int(*value as u64, false)
+                    .as_basic_value_enum(),
                 Primitive::String { value, .. } => {
-                    let string_ptr = match self.global_strings.get(value) {
-                        Some(string_ptr) => *string_ptr,
-                        None => {
-                            let _ = self.global_strings.insert(value.to_string(), unsafe {
-                                self.builder.build_global_string(value, "").unwrap().as_pointer_value()
-                            });
-
-                            *self.global_strings.get(value).unwrap()
-                        }
-                    };
-
-                    Ok(string_ptr.into())
+                    let string_ptr = self.global_strings
+                        .entry(value.to_string())
+                        .or_insert_with(|| unsafe {
+                            self.builder.build_global_string(value, "").unwrap().as_pointer_value()
+                        });
+                    (*string_ptr).into()
                 }
-            }
+            })
         }
     }
 
@@ -553,7 +523,6 @@ impl<'a, 'ctx> Codegen<'a, 'ctx> {
         }
 
         let entry = self.context.append_basic_block(function, "entry");
-
         self.builder.position_at_end(entry);
         self.fn_value_opt = Some(function);
 
@@ -563,13 +532,10 @@ impl<'a, 'ctx> Codegen<'a, 'ctx> {
 
         self.builder.build_return(Some(&self.context.i32_type().const_zero())).unwrap();
 
-        // println!("{:?}", self.global_strings);
-
         if function.verify(true) {
             Ok(function)
         } else {
             unsafe { function.delete(); }
-
             Err("Invalid function")
         }
     }
@@ -582,6 +548,7 @@ impl<'a, 'ctx> Codegen<'a, 'ctx> {
     ) -> Result<FunctionValue<'ctx>, &'static str> {
         let printf_fn = printf_prototype(context, module);
         let scanf_fn = scanf_prototype(context, module);
+        let fflush_fn = fflush_prototype(context, module);
 
         let mut codegen = Codegen {
             context,
@@ -592,7 +559,8 @@ impl<'a, 'ctx> Codegen<'a, 'ctx> {
             fn_value_opt: None,
             global_strings: HashMap::new(),
             printf_fn,
-            scanf_fn
+            scanf_fn,
+            fflush_fn
         };
 
         codegen.compile_program()
@@ -639,9 +607,9 @@ mod test {
         let module = context.create_module("test_compile");
 
         let _compiled = Codegen::compile(
-            &context, 
-            &builder, 
-            &module, 
+            &context,
+            &builder,
+            &module,
             &parsed.module.program
         ).unwrap();
 

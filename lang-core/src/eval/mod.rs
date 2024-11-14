@@ -116,7 +116,7 @@ fn eval_operator(operator: crate::parser::prelude::Operator, env: Rc<RefCell<Env
 
                 let escaped = buf.split_whitespace()
                     .nth(0)
-                    .unwrap()
+                    .unwrap_or_default()
                     .to_string();
 
                 let value = parse_input(escaped, ident_type);
