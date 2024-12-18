@@ -3,6 +3,7 @@ use crate::utils::prelude::SrcSpan;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LexicalErrorType {
     UnrecognizedToken { tok: char },
+    MissingDigitAfterPeriod,
     MissingDigitBeforeExponent,
     MissingDigitsAfterExponent,
     MultipleFloatingPoints,
@@ -23,6 +24,9 @@ impl LexicalError {
         match self.error {
             LexicalErrorType::DigitOutOfRadix => {
                 ("This digit is too big for the specified radix", vec![])
+            },
+            LexicalErrorType::MissingDigitAfterPeriod => {
+                ("Missing a digit after period", vec![])
             },
             LexicalErrorType::MissingDigitBeforeExponent => {
                 ("Missing a digit before exponent", vec![])

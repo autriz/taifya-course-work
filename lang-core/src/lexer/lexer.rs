@@ -357,6 +357,12 @@ impl<T: Iterator<Item = (u32, char)>> Lexer<T> {
 			'B' | 'b' => NumberType::Binary,
 			'O' | 'o' => NumberType::Octal,
 			'H' | 'h' => NumberType::Hex,
+			'.' => {
+				return Err(LexicalError {
+					error: LexicalErrorType::MissingDigitAfterPeriod,
+					location: SrcSpan::from(start_pos, end_pos)
+				})
+			},
 			_ if has_period || has_exponent => {
 				if has_exponent {
 					if !has_number_before_exponent {

@@ -1,6 +1,4 @@
-use core::str;
-use std::{path::Path, process::Command};
-
+use std::{path::PathBuf, process::Command};
 use inkwell::{module::Module, targets::{CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine}, OptimizationLevel};
 
 pub struct ObjectCompiler;
@@ -13,7 +11,7 @@ impl ObjectCompiler {
         code_model: CodeModel,
         module: &Module,
         file_type: FileType,
-        out: &str,
+        out: &PathBuf,
     ) {
         Target::initialize_all(&InitializationConfig::default());
         let target_triple = TargetMachine::get_default_triple();
@@ -46,15 +44,16 @@ impl ObjectCompiler {
         target_machine.write_to_file(
             &module, 
             file_type, 
-            Path::new(out)
+            &out
         ).unwrap();
     }
 }
 
 impl ObjectLinker {
-    pub fn link(input_file: &str, output_file: &str) -> Result<(), i32> {
+    pub fn link(input_file: &PathBuf, opt_level: inkwell::OptimizationLevel, output_file: &PathBuf) -> Result<(), i32> {
         let gcc = Command::new("gcc")
             .arg(input_file)
+            .arg(&format!("-O{}", opt_level as isize))
             .arg("-o")
             .arg(output_file)
             .output()

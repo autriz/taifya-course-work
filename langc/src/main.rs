@@ -56,12 +56,18 @@ enum Command {
         /// Path of executable file
         #[arg(short, long)]
         output: Option<PathBuf>,
+        /// Optimization level to use when compiling
+        #[arg(short = 'O', value_name = "OPT_LEVEL")]
+        optimization: Option<u8>,
         /// Leave object file after compilation [default: false]
         #[arg(long, default_value_t = false)]
         obj: bool,
-        /// Return assembly code [default: false]
+        /// Return Intermediate Representation [default: false]
         #[arg(long, default_value_t = false)]
-        assembly: bool,
+        ir: bool,
+        /// Return assembly code [default: false]
+        #[arg(short, long, default_value_t = false)]
+        asm: bool,
     },
     /// Runs Read Lex Print Loop
     Rlpl,
@@ -135,8 +141,10 @@ fn main() {
         Command::Compile { 
             path, 
             output,
+            optimization,
             obj,
-            assembly
+            ir,
+            asm
         } => {
             let warning_emitter = Rc::new(ConsoleWarningEmitter);
 
@@ -181,13 +189,22 @@ fn main() {
                 None => PathBuf::from(path.file_name().unwrap().to_str().unwrap())
             };
 
-            if !assembly {
+            let opt_level = match optimization {
+                Some(level) => match level {
+                    0 => inkwell::OptimizationLevel::None,
+                    1 => inkwell::OptimizationLevel::Less,
+                    2 => inkwell::OptimizationLevel::Default,
+                    _ => inkwell::OptimizationLevel::Aggressive,
+                },
+                None => inkwell::OptimizationLevel::None
+            };
+
+            if !asm && !ir {
                 let mut obj_file = output.clone();
                 obj_file.set_extension("o");
-                let obj_file = obj_file.as_os_str().to_str().unwrap();
     
                 ObjectCompiler::compile(
-                    inkwell::OptimizationLevel::Default, 
+                    opt_level, 
                     inkwell::targets::RelocMode::PIC, 
                     inkwell::targets::CodeModel::Default, 
                     &module, 
@@ -197,29 +214,40 @@ fn main() {
     
                 let mut exe_file = output.clone();
                 exe_file.set_extension("");
-                let exe_file = exe_file.as_os_str().to_str().unwrap();
     
                 ObjectLinker::link(
-                    obj_file,
-                    exe_file
+                    &obj_file,
+                    opt_level,
+                    &exe_file
                 ).unwrap();
     
                 if !obj {
                     let _ = std::fs::remove_file(obj_file);
                 }
             } else {
-                let mut asm_file = output.clone();
-                asm_file.set_extension("asm");
-                let asm_file = asm_file.as_os_str().to_str().unwrap();
+                if ir {
+                    let mut ir_file = output.clone();
+                    ir_file.set_extension("ll");
 
-                ObjectCompiler::compile(
-                    inkwell::OptimizationLevel::Default, 
-                    inkwell::targets::RelocMode::PIC, 
-                    inkwell::targets::CodeModel::Default, 
-                    &module, 
-                    inkwell::targets::FileType::Assembly,
-                    &asm_file,
-                );
+                    std::fs::write(
+                        ir_file, 
+                        module.to_string()
+                    ).unwrap();
+                }
+
+                if asm {
+                    let mut asm_file = output.clone();
+                    asm_file.set_extension("asm");
+    
+                    ObjectCompiler::compile(
+                        opt_level, 
+                        inkwell::targets::RelocMode::PIC, 
+                        inkwell::targets::CodeModel::Default, 
+                        &module, 
+                        inkwell::targets::FileType::Assembly,
+                        &asm_file,
+                    );
+                }
             }
 
             print_compiled(std::time::Instant::now() - start);

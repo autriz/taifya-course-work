@@ -4,7 +4,13 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
-compiler = ["dep:inkwell", "dep:llvm-sys"]
+default = []
+# If you want to change LLVM linking behavior (dynamic linking does not work on Windows)
+# compiler-dynamic = ["compiler", "llvm-sys/force-dynamic"]
+# compiler = ["dep:inkwell", "dep:llvm-sys"]                # Using default static linking
+compiler-dynamic = ["llvm", "lang-core/compiler-dynamic"]
+compiler = ["llvm", "lang-core/compiler"]
+llvm = ["dep:inkwell", "dep:llvm-sys"]
 
 [dependencies]
 lang-core = { path = "../lang-core" }
